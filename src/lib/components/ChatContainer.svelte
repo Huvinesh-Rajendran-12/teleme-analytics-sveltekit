@@ -516,9 +516,9 @@
           {#if chatState.stage === "initial"}
             <div class="mt-4">
               <OptionsButtons
-                buttons={menuConfig.menuButtons.main as OptionsButtonType[]}
-                on:select={e => handleInitialOption(e.detail)}
-              />
+                       buttons={menuConfig.menuButtons.main as OptionsButtonType[]}
+                       onSelect={handleInitialOption}
+                     />
             </div>
           {:else if chatState.stage === "asking_duration"}
             <div class="mt-4">
@@ -552,11 +552,11 @@
               {/if}
             </div>
           {:else}
-            <div class="mt-4">
-              <OptionsButtons
-                buttons={menuConfig.menuButtons.conversation as OptionsButtonType[]}
-                on:select={e => handlePostResponseOption(e.detail)}
-              />
+           <div class="mt-4">
+            <OptionsButtons
+              buttons={menuConfig.menuButtons.conversation as OptionsButtonType[]}
+              onSelect={handlePostResponseOption}
+            />
             </div>
           {/if}
         {/if}
@@ -619,9 +619,8 @@
     <div class="w-full border-t border-gray-200 bg-white shadow-md">
       <div class="px-4 md:px-8 lg:px-12 py-3 w-full">
         <ChatInput
-          on:sendQuestion={e => handleSendQuestion(e.detail)}
+          onSendQuestion={handleSendQuestion}
           disabled={chatState.loading}
-          error={chatInputError}
           maxLength={MAX_QUESTION_LENGTH}
         />
       </div>

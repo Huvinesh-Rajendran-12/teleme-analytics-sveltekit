@@ -1,6 +1,8 @@
 <script lang="ts">
   export let disabled = false;
   export let onSendQuestion: (message: string) => void;
+  export let maxLength: number | undefined = undefined;
+  console.log("onSendQuestion prop:", onSendQuestion);
   
   let inputMessage = '';
   let inputElement: HTMLTextAreaElement;
@@ -54,6 +56,7 @@
       class="flex-grow resize-none overflow-auto py-3 px-4 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded-lg"
       style="min-height: 3rem; max-height: 150px;"
       placeholder="Type your question here..."
+      maxlength={maxLength}
       {disabled}
     ></textarea>
     

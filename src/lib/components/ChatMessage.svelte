@@ -1,7 +1,7 @@
 <script lang="ts">
   export let message: {
     id: string;
-    role: 'user' | 'assistant';
+    role: import('$lib/types').MessageRole;
     content: string | object;
   };
 

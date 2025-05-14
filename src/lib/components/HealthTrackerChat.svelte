@@ -484,7 +484,7 @@
       } else if (errorMessage.includes('rate limit') || errorMessage.includes('too many requests')) {
         handleConnectionError("Service is experiencing high load. Please try again in a few minutes.");
       } else {
-        handleConnectionError(error.message || "An unknown error occurred.");
+        handleConnectionError(error instanceof Error ? error.message : "An unknown error occurred");
       }
     }
   };

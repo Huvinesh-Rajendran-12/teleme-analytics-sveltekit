@@ -1,93 +1,78 @@
 <script lang="ts">
-  import { onMount, createEventDispatcher } from 'svelte';
-
-  // Create a dispatcher for events
-  const dispatch = createEventDispatcher();
-
-  // Maximum characters allowed in the input field
-  export let maxLength = 1000;
   export let disabled = false;
-  export let error: string | null = null;
-
-  let question = '';
-  let charCount = 0;
-  let isExceedingLimit = false;
+  export let onSendQuestion: (message: string) => void;
   
-  // Update character count whenever question changes
-  $: {
-    charCount = question.length;
-    isExceedingLimit = question.length > maxLength;
-  }
-
-  function handleSubmit(e: Event) {
-    e.preventDefault();
-    
-    // Don't allow submission if exceeding the character limit
-    if (question.trim() && !isExceedingLimit) {
-      dispatch('sendQuestion', question);
-      question = '';
-      charCount = 0;
+  let inputMessage = '';
+  let inputElement: HTMLTextAreaElement;
+  
+  function handleKeyDown(event: KeyboardEvent) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      handleSend();
     }
   }
   
-  function handleInputChange(e: Event) {
-    const target = e.target as HTMLInputElement;
-    const newValue = target.value;
+  function handleSend() {
+    if (inputMessage.trim() === '' || disabled) return;
     
-    // Always update the state to show the current input and character count
-    question = newValue;
+    onSendQuestion(inputMessage.trim());
+    inputMessage = '';
     
-    // If exceeding limit, don't allow more characters (but allow deletion)
-    if (newValue.length > maxLength && question.length === maxLength) {
-      // At the limit, don't allow more input
-      question = question;
+    // Reset textarea height
+    if (inputElement) {
+      inputElement.style.height = 'auto';
+    }
+  }
+  
+  function adjustTextareaHeight() {
+    if (!inputElement) return;
+    
+    // Reset height to auto so we can determine the new scrollHeight
+    inputElement.style.height = 'auto';
+    
+    // Set to scrollHeight to have the textarea grow
+    const maxHeight = 150; // Maximum height before scrolling
+    inputElement.style.height = `${Math.min(inputElement.scrollHeight, maxHeight)}px`;
+  }
+  
+  $: {
+    // This will run when inputMessage changes
+    if (inputElement) {
+      adjustTextareaHeight();
     }
   }
 </script>
 
-<form on:submit={handleSubmit} class="mt-6">
-  <div class="chat-input-container relative flex flex-col">
-    <div class="flex items-center p-1 bg-white rounded-2xl shadow">
-      <input
-        type="text"
-        value={question}
-        on:input={handleInputChange}
-        placeholder="Type your question here..."
-        {disabled}
-        class="chat-input flex-grow p-3 px-4 bg-transparent border-none {isExceedingLimit ? 'border-red-500 text-red-500' : ''}"
-        maxlength={maxLength + 1} 
-      />
-      <button
-        type="submit"
-        disabled={disabled || !question.trim()}
-        class="chat-submit-btn relative overflow-hidden p-3 px-5 btn-gradient text-white font-medium rounded-xl"
-      >
-        <div class="flex items-center">
-          <span>Send</span>
-          <svg xmlns="http://www.w3.org/2000/svg" class="send-icon h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-          </svg>
-        </div>
-        <div class="hover-overlay"></div>
-      </button>
-    </div>
+<div class="relative w-full">
+  <div class="flex items-end bg-white rounded-lg shadow-sm border border-gray-200 pr-2">
+    <textarea
+      bind:this={inputElement}
+      bind:value={inputMessage}
+      on:keydown={handleKeyDown}
+      on:input={adjustTextareaHeight}
+      rows="1"
+      class="flex-grow resize-none overflow-auto py-3 px-4 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded-lg"
+      style="min-height: 3rem; max-height: 150px;"
+      placeholder="Type your question here..."
+      {disabled}
+    ></textarea>
     
-    <div class="flex justify-between items-center mt-1 px-2">
-      <div class="text-xs {isExceedingLimit ? 'text-red-500 font-medium' : 'text-gray-500'}">
-        {charCount}/{maxLength} characters
-      </div>
-      
-      {#if isExceedingLimit}
-        <div class="text-red-500 text-xs">
-          Question is too long. Please shorten your text.
-        </div>
-      {/if}
-    </div>
+    <button
+      on:click={handleSend}
+      class="ml-2 mb-2 p-2 rounded-full bg-blue-500 text-white focus:outline-none hover:bg-blue-600 disabled:opacity-50 disabled:pointer-events-none"
+      disabled={inputMessage.trim() === '' || disabled}
+      aria-label="Send message"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5">
+        <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+      </svg>
+    </button>
   </div>
-  
-  {#if error}
-    <div class="text-red-500 text-sm mt-2 text-center">
-      {error}
-    </div>
-  {/if}
-</form>
+</div>
+
+<style>
+  textarea {
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+</style>

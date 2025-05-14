@@ -1,47 +1,61 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
 
-  export let buttons: Array<{
+  // Define the button type
+  export let buttons: {
     id: string;
     label: string;
     icon: string;
-    variant: 'primary' | 'secondary' | 'ghost';
+    variant: "primary" | "secondary" | "ghost";
     isVisible: boolean;
     order: number;
-  }>;
+  }[] = [];
 
-  const dispatch = createEventDispatcher();
+  // Props for callback function
+  export let onSelect: (id: string) => void;
 
-  function getButtonClass(variant: string): string {
-    switch (variant) {
-      case 'primary':
-        return 'btn-primary bg-gradient-to-r from-primary-500 to-secondary-500 text-white shadow hover:shadow-md';
-      case 'secondary':
-        return 'btn-secondary bg-white text-gray-700 border border-gray-200 shadow-sm hover:bg-gray-50';
-      case 'ghost':
-        return 'btn-ghost bg-transparent text-gray-500 hover:bg-gray-100';
-      default:
-        return 'btn-secondary bg-white text-gray-700 border border-gray-200 shadow-sm hover:bg-gray-50';
-    }
-  }
-
+  // Handle button click
   function handleSelect(id: string) {
-    dispatch('select', id);
+    onSelect(id);
   }
-
-  $: visibleButtons = buttons
-    .filter(b => b.isVisible)
-    .sort((a, b) => a.order - b.order);
 </script>
 
-<div class="options-container flex flex-wrap justify-center gap-2 w-full">
-  {#each visibleButtons as button (button.id)}
-    <button
+<div class="flex flex-wrap justify-center gap-3">
+  {#each buttons.filter(b => b.isVisible).sort((a, b) => a.order - b.order) as button}
+    <button 
       on:click={() => handleSelect(button.id)}
-      class="option-button flex items-center px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 transform hover:scale-105 {getButtonClass(button.variant)}"
+      class="option-button {button.variant === 'primary' 
+        ? 'bg-blue-500 hover:bg-blue-600 text-white' 
+        : button.variant === 'secondary' 
+          ? 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+          : 'bg-transparent hover:bg-gray-100 text-gray-700 border border-gray-300'}"
     >
-      <span class="button-icon mr-2">{button.icon}</span>
-      <span class="button-label">{button.label}</span>
+      {#if button.icon}
+        <span class="option-icon">{button.icon}</span>
+      {/if}
+      <span class="option-label">{button.label}</span>
     </button>
   {/each}
 </div>
+
+<style>
+  .option-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  .option-icon {
+    margin-right: 0.5rem;
+  }
+
+  .option-label {
+    white-space: nowrap;
+  }
+</style>

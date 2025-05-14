@@ -1,484 +1,141 @@
-import axios, { AxiosError } from "axios";
-import { browser } from "$app/environment";
+import { logError, logDebug } from '$lib/utils/secureLogger'; // Assuming secureLogger is in $lib/utils
 
-type N8nError = Error | AxiosError;
-
-interface N8nConfig {
-  baseUrl: string;
-  apiKey?: string;
-  defaultTimeout?: number;
-}
-
-interface N8nResponse<T = unknown> {
+// Define a basic response structure based on how the component uses the result
+type N8nServiceResponse<T = unknown> = {
   success: boolean;
   data?: T;
   error?: string;
-}
+};
 
-// Default values that will be overridden by environment variables in the browser
-let N8N_BASE_URL = "http://localhost:5678";
-let N8N_API_KEY = "";
-let N8N_ANALYTICS_WEBHOOK_URL = "";
-let N8N_HEALTH_TRACKER_WEBHOOK_URL = "";
-let N8N_ADMIN_WEBHOOK_URL = "";
-let N8N_TIMEOUT = 60000;
+// Placeholder service for interacting with n8n workflows via backend API
+// IMPORTANT: Replace these placeholder implementations with actual API calls
+// to your SvelteKit backend endpoints that proxy requests to n8n.
 
-// Load environment variables from the browser
-if (browser) {
-  N8N_BASE_URL = (
-    import.meta.env.VITE_N8N_BASE_URL || "http://localhost:5678"
-  ).replace(/\/$/, "");
-  N8N_API_KEY = import.meta.env.VITE_N8N_API_KEY;
-  N8N_ANALYTICS_WEBHOOK_URL = import.meta.env.VITE_N8N_ANALYTICS_WEBHOOK_URL;
-  N8N_HEALTH_TRACKER_WEBHOOK_URL = import.meta.env
-    .VITE_N8N_HEALTH_TRACKER_WEBHOOK_URL;
-  N8N_ADMIN_WEBHOOK_URL = import.meta.env.VITE_N8N_ADMIN_WEBHOOK_URL;
-  N8N_TIMEOUT = Number(import.meta.env.VITE_N8N_TIMEOUT) || 60000;
-}
+/**
+ * Simulates calling an n8n workflow with initial parameters.
+ * Replace with actual API call to your backend.
+ */
+export const callWithParams = async (
+  sessionId: string,
+  userId: string | number,
+  userName: string,
+  period: number,
+  initialMessage: string,
+  operation: string,
+  // The original code had null for question, let's keep it optional
+  question: string | null | undefined,
+  patientId: string | number
+): Promise<N8nServiceResponse> => {
+  logDebug("n8nService: Simulating callWithParams", { sessionId, userId, userName, period, operation, patientId });
 
-// Track API calls for debugging (using a private counter for security)
-let apiCallCount = 0;
-
-export class N8nService {
-  private baseUrl: string;
-  private apiKey?: string;
-  private defaultTimeout: number;
-  private analyticsWebhookUrl?: string;
-  private healthTrackerWebhookUrl?: string;
-  private adminWebhookUrl?: string;
-  private initialized: boolean = false;
-
-  constructor(config?: N8nConfig) {
-    // Use provided config or environment variables
-    this.baseUrl = (config?.baseUrl || N8N_BASE_URL).replace(/\/$/, "");
-    this.apiKey = config?.apiKey || N8N_API_KEY;
-    this.defaultTimeout = config?.defaultTimeout || N8N_TIMEOUT;
-    this.analyticsWebhookUrl = N8N_ANALYTICS_WEBHOOK_URL;
-    this.healthTrackerWebhookUrl = N8N_HEALTH_TRACKER_WEBHOOK_URL;
-    this.adminWebhookUrl = N8N_ADMIN_WEBHOOK_URL;
-
-    // Only log initialization once
-    if (!this.initialized) {
-      this.initialized = true;
-      console.info("N8N service initialized with base URL:", this.baseUrl);
-    }
-  }
-
-  /**
-   * Call the webhook with params
-   */
-  async callWithParams(
-    sessionId: string,
-    userId: string | number,
-    userName: string,
-    period: number,
-    message: string,
-    application: string = "analytics_chatbot",
-    is_ngo: boolean | null = null,
-    patient_id: string | number | null = null,
-  ): Promise<N8nResponse<string>> {
-    // Track API calls for debugging
-    apiCallCount++;
-    console.debug("API call initiated", {
-      sessionId: "[REDACTED]",
-      callCount: apiCallCount,
-    });
-    try {
-      // Prepare headers
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-
-      // Add API key if provided
-      if (this.apiKey) {
-        headers["X-N8N-API-KEY"] = this.apiKey;
-      }
-
-      // Construct URL - default to analytics webhook if available, otherwise fallback to old path
-      let url;
-      if (application === "analytics_chatbot") {
-        url = this.analyticsWebhookUrl;
-      } else if (application === "health_tracker_summary") {
-        url = this.healthTrackerWebhookUrl;
-      }
-
-      // Fallback if the specific webhook URL for the application type is not configured,
-      // or if the application type doesn't match the specific cases handled above.
-      // The original fallback was `${this.baseUrl}/webhook/nextjs-test`. Let's keep that.
-      console.debug("Calling n8n service", { url });
-
-      // Make the request with abort controller for better timeout handling
-      const controller = new AbortController();
-      const timeoutId = setTimeout(
-        () => controller.abort(),
-        this.defaultTimeout,
-      );
-
-      const response = await axios({
-        method: "post",
-        url: url,
-        headers: headers,
-        data: {
-          sessionId,
-          user_id: userId,
-          user_name: userName,
-          duration: period,
-          message,
-          ...(is_ngo !== null && { is_ngo }),
-          ...(patient_id !== null && { patient_id }),
-          application,
-        },
-        signal: controller.signal,
-      });
-
-      // Clear the timeout
-      clearTimeout(timeoutId);
-
-      // Handle various response formats
-      let responseData =
-        response.data?.output?.answer ||
-        response.data?.output?.response ||
-        response.data?.response ||
-        response.data;
-
-      if (
-        !responseData ||
-        (typeof responseData === "string" && responseData.trim() === "")
-      ) {
-        return {
-          success: false,
-          error: "Empty response from server",
-        };
-      }
-
-      // Sanitize any SVG content in the response to prevent rendering errors
-      if (typeof responseData === "string") {
-        responseData = responseData; // In a real app, you would process SVG here
-      }
-
-      return {
-        success: true,
-        data: responseData,
-      };
-    } catch (error: unknown) {
-      const n8nError = error as N8nError;
-      console.error("N8N webhook error:", n8nError);
-
-      // Handle specific error types
-      if (n8nError instanceof Error) {
-        if (axios.isAxiosError(n8nError)) {
-          if (
-            error.code === "ECONNABORTED" ||
-            error.message.includes("timeout")
-          ) {
-            return {
-              success: false,
-              error: "Connection timed out",
-            };
-          } else if (error.code === "ECONNREFUSED") {
-            return {
-              success: false,
-              error: "Connection refused",
-            };
-          } else if (error.message.includes("Network Error")) {
-            return {
-              success: false,
-              error:
-                "We couldn't connect to the server. Please check your internet connection or try again in a few moments.",
-            };
-          }
-        }
-
-        return {
-          success: false,
-          error: n8nError.message,
-        };
-      }
-
-      return {
-        success: false,
-        error: "Unknown error occurred",
-      };
-    }
-  }
-
-  /**
-   * Send a message to n8n and get a response
-   */
-  async sendMessage(
-    sessionId: string,
-    message: string,
-    userId: string | number = "1160",
-    application: string = "analytics_chatbot",
-    patient_id?: string | number | null,
-  ): Promise<N8nResponse<string>> {
-    // Track API calls for debugging
-    apiCallCount++;
-    console.debug("Message API call initiated", {
-      sessionId: "[REDACTED]",
-      callCount: apiCallCount,
-    });
-    try {
-      // Prepare headers
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-
-      // Add API key if provided
-      if (this.apiKey) {
-        headers["X-N8N-API-KEY"] = this.apiKey;
-      }
-
-      // Select appropriate webhook URL based on application
-      let url;
-      if (application === "analytics_chatbot") {
-        url = this.analyticsWebhookUrl;
-      } else if (application === "health_tracker_summary") {
-        url = this.healthTrackerWebhookUrl;
-      } else {
-        // Fallback to default
-        url = `${this.baseUrl}/webhook/nextjs-test`;
-      }
-
-      if (!url) {
-        console.error(
-          `No webhook URL available for application: ${application}`,
-        );
-        return {
-          success: false,
-          error: `Webhook URL not configured for application: ${application}`,
-        };
-      }
-
-      console.debug("Sending message to n8n", {
-        messageFirstChars: message.substring(0, 20) + "...",
-      });
-
-      // Make the request with abort controller for better timeout handling
-      const controller = new AbortController();
-      const timeoutId = setTimeout(
-        () => controller.abort(),
-        this.defaultTimeout,
-      );
-
-      const response = await axios({
-        method: "post",
-        url: url,
-        headers: headers,
-        data: {
-          sessionId: sessionId,
-          message: message,
-          user_id: userId,
-          application: application,
-          ...(application === "health_tracker_summary" &&
-            patient_id !== null && { patient_id }),
-        },
-        signal: controller.signal,
-      });
-
-      // Clear the timeout
-      clearTimeout(timeoutId);
-
-      // Handle various response formats
-      let responseData =
-        response.data?.output?.answer ||
-        response.data?.output?.response ||
-        response.data?.response ||
-        response.data;
-
-      if (
-        !responseData ||
-        (typeof responseData === "string" && responseData.trim() === "")
-      ) {
-        return {
-          success: false,
-          error: "Empty response from server",
-        };
-      }
-
-      // Sanitize any SVG content in the response to prevent rendering errors
-      if (typeof responseData === "string") {
-        responseData = responseData; // In a real app, you would process SVG here
-      }
-
-      return {
-        success: true,
-        data: responseData,
-      };
-    } catch (error: unknown) {
-      const n8nError = error as N8nError;
-      console.error("N8N webhook error:", n8nError);
-
-      // Handle specific error types
-      if (n8nError instanceof Error) {
-        if (axios.isAxiosError(n8nError)) {
-          if (
-            error.code === "ECONNABORTED" ||
-            error.message.includes("timeout")
-          ) {
-            return {
-              success: false,
-              error: "Connection timed out",
-            };
-          } else if (error.code === "ECONNREFUSED") {
-            return {
-              success: false,
-              error: "Connection refused",
-            };
-          } else if (error.message.includes("Network Error")) {
-            return {
-              success: false,
-              error:
-                "We couldn't connect to the server. Please check your internet connection or try again in a few moments.",
-            };
-          }
-        }
-
-        return {
-          success: false,
-          error: n8nError.message,
-        };
-      }
-
-      return {
-        success: false,
-        error: "Unknown error occurred",
-      };
-    }
-  }
-
-  /**
-   * Call default webhook with generic payload
-   */
-  async callDefaultWebhook(
-    payload: unknown,
-    path: string = "default",
-  ): Promise<N8nResponse<string>> {
-    // Track API calls for debugging
-    apiCallCount++;
-    console.debug("N8N API call", {
-      callNumber: apiCallCount,
-      path,
-      payloadPreview: "Redacted for security",
+  // In a real implementation, replace this with an actual API call
+  try {
+    const response = await fetch('/api/n8n-call-with-params', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sessionId,
+        userId,
+        userName,
+        period,
+        message: initialMessage,
+        operation,
+        patientId,
+      }),
     });
 
-    try {
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-
-      if (this.apiKey) {
-        headers["X-N8N-API-KEY"] = this.apiKey;
-      }
-
-      // Use appropriate webhook URL based on path
-      let url;
-      if (path === "analytics") {
-        url = this.analyticsWebhookUrl;
-      } else if (path === "admin") {
-        url = this.adminWebhookUrl;
-      } else {
-        url = `${this.baseUrl}/webhook/${path}`;
-      }
-
-      if (!url) {
-        console.error("No webhook URL available for path", { path });
-        return {
-          success: false,
-          error: `Webhook URL not configured for: ${path}`,
-        };
-      }
-
-      console.debug("Calling default webhook", { url });
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(
-        () => controller.abort(),
-        this.defaultTimeout,
-      );
-
-      const response = await axios.post(url, payload, {
-        headers,
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      // Extract the response data
-      let responseData =
-        response.data.output?.answer ||
-        response.data.output?.response ||
-        response.data.response ||
-        JSON.stringify(response.data);
-
-      // Sanitize any SVG content in the response
-      if (typeof responseData === "string") {
-        responseData = responseData; // In a real app, you would process SVG here
-      }
-
-      return {
-        success: true,
-        data: responseData,
-      };
-    } catch (error: unknown) {
-      const n8nError = error as N8nError;
-      console.error("N8N default webhook error:", n8nError);
-
-      if (n8nError instanceof Error) {
-        if (axios.isAxiosError(n8nError)) {
-          if (
-            error.code === "ECONNABORTED" ||
-            error.message.includes("timeout")
-          ) {
-            return {
-              success: false,
-              error: "Connection timed out",
-            };
-          } else if (error.code === "ECONNREFUSED") {
-            return {
-              success: false,
-              error: "Connection refused",
-            };
-          } else if (error.message.includes("Network Error")) {
-            return {
-              success: false,
-              error:
-                "We couldn't connect to the server. Please check your internet connection or try again in a few moments.",
-            };
-          }
-        }
-
-        return {
-          success: false,
-          error: n8nError.message,
-        };
-      }
-
-      return {
-        success: false,
-        error: "Unknown error occurred",
-      };
+    if (!response.ok) {
+      const errorBody = await response.text();
+      logError("n8nService: API callWithParams failed", { status: response.status, errorBody });
+      return { success: false, error: `API error: ${response.status} ${response.statusText}` };
     }
+
+    const data = await response.json();
+    logDebug("n8nService: callWithParams successful", { data });
+    return { success: true, data };
+
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logError("n8nService: Error during callWithParams fetch", { error: errorMessage, sessionId, patientId });
+    return { success: false, error: `Network or unexpected error: ${errorMessage}` };
   }
 
-  /**
-   * Cleanup function
-   */
-  cleanup() {
-    console.debug("Cleaning up n8n service connection");
-    // Any cleanup logic here
+  // // Placeholder error response (uncomment and adjust for simulating errors)
+  // return new Promise((resolve) => {
+  //   setTimeout(() => {
+  //      logError("n8nService: Simulating callWithParams error");
+  //      resolve({
+  //        success: false,
+  //        error: "Simulated service unavailable error.",
+  //      });
+  //    }, 1500); // Simulate network delay
+  // });
+};
+
+/**
+ * Simulates sending a message (follow-up question) to an n8n workflow.
+ * Replace with actual API call to your backend.
+ */
+export const sendMessage = async (
+  sessionId: string,
+  question: string,
+  userId: string | number,
+  operation: string, // The operation type is used for context
+  patientId: string | number
+): Promise<N8nServiceResponse> => {
+  logDebug("n8nService: Simulating sendMessage", { sessionId, userId, question: question.substring(0, 50) + '...', operation, patientId });
+
+  // In a real implementation, replace this with an actual API call
+  try {
+    const response = await fetch('/api/n8n-send-message', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sessionId,
+        userId,
+        message: question,
+        operation,
+        patientId,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      logError("n8nService: API sendMessage failed", { status: response.status, errorBody });
+      return { success: false, error: `API error: ${response.status} ${response.statusText}` };
+    }
+
+    const data = await response.json();
+    logDebug("n8nService: sendMessage successful", { data });
+    return { success: true, data };
+
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logError("n8nService: Error during sendMessage fetch", { error: errorMessage, sessionId, patientId });
+    return { success: false, error: `Network or unexpected error: ${errorMessage}` };
   }
-}
 
-// Create a singleton instance with lazy initialization
-let n8nServiceInstance: N8nService | null = null;
+  // // Placeholder error response (uncomment and adjust for simulating errors)
+  // return new Promise((resolve) => {
+  //    setTimeout(() => {
+  //       logError("n8nService: Simulating sendMessage error");
+  //       resolve({
+  //         success: false,
+  //         error: "Simulated processing error.",
+  //       });
+  //     }, 1000); // Simulate network delay
+  // });
+};
 
-export const n8nService = (() => {
-  if (!n8nServiceInstance) {
-    n8nServiceInstance = new N8nService();
-  }
-  return n8nServiceInstance;
-})();
-
-// Export a factory function to create custom instances
-export const createN8nService = (config: N8nConfig) => new N8nService(config);
+/**
+ * Placeholder cleanup function.
+ * Implement if your service needs to clean up resources (e.g., terminate WebSocket connections).
+ */
+export const cleanup = () => {
+  logDebug("n8nService: Running cleanup (placeholder)");
+  // Add any necessary cleanup logic here
+};

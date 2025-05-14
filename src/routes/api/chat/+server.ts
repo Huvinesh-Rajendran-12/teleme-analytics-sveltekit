@@ -41,7 +41,7 @@ async function callN8nWebhook(
   payload: Record<string, unknown>,
   authToken: string,
 ): Promise<{ response: unknown; errorType?: ErrorType }> {
-  console.log(`Calling n8n webhook for action: ${action || "analytics"}`);
+  console.debug(`Calling n8n webhook for action: ${action || "analytics"}`);
 
   try {
     // Use the n8nService to call the appropriate webhook

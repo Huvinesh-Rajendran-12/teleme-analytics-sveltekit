@@ -1,5 +1,7 @@
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { browser } from "$app/environment";
+
+type N8nError = Error | AxiosError;
 
 interface N8nConfig {
   baseUrl: string;
@@ -158,12 +160,13 @@ export class N8nService {
         success: true,
         data: responseData,
       };
-    } catch (error: any) {
-      console.error("N8N webhook error:", error);
+    } catch (error: unknown) {
+      const n8nError = error as N8nError;
+      console.error("N8N webhook error:", n8nError);
 
       // Handle specific error types
-      if (error instanceof Error) {
-        if (axios.isAxiosError(error)) {
+      if (n8nError instanceof Error) {
+        if (axios.isAxiosError(n8nError)) {
           if (
             error.code === "ECONNABORTED" ||
             error.message.includes("timeout")
@@ -188,7 +191,7 @@ export class N8nService {
 
         return {
           success: false,
-          error: error.message,
+          error: n8nError.message,
         };
       }
 
@@ -302,12 +305,13 @@ export class N8nService {
         success: true,
         data: responseData,
       };
-    } catch (error: any) {
-      console.error("N8N webhook error:", error);
+    } catch (error: unknown) {
+      const n8nError = error as N8nError;
+      console.error("N8N webhook error:", n8nError);
 
       // Handle specific error types
-      if (error instanceof Error) {
-        if (axios.isAxiosError(error)) {
+      if (n8nError instanceof Error) {
+        if (axios.isAxiosError(n8nError)) {
           if (
             error.code === "ECONNABORTED" ||
             error.message.includes("timeout")
@@ -332,7 +336,7 @@ export class N8nService {
 
         return {
           success: false,
-          error: error.message,
+          error: n8nError.message,
         };
       }
 
@@ -416,11 +420,12 @@ export class N8nService {
         success: true,
         data: responseData,
       };
-    } catch (error: any) {
-      console.error("N8N default webhook error:", error);
+    } catch (error: unknown) {
+      const n8nError = error as N8nError;
+      console.error("N8N default webhook error:", n8nError);
 
-      if (error instanceof Error) {
-        if (axios.isAxiosError(error)) {
+      if (n8nError instanceof Error) {
+        if (axios.isAxiosError(n8nError)) {
           if (
             error.code === "ECONNABORTED" ||
             error.message.includes("timeout")
@@ -445,7 +450,7 @@ export class N8nService {
 
         return {
           success: false,
-          error: error.message,
+          error: n8nError.message,
         };
       }
 

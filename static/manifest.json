@@ -1,0 +1,17 @@
+{
+  "theme_color": "#0ea5e9",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "scope": "/",
+  "start_url": "/",
+  "name": "Teleme Analytics Assistant",
+  "short_name": "Teleme Analytics",
+  "description": "Your intelligent healthcare analytics partner, providing insights from your medical data",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}

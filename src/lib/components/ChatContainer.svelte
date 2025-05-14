@@ -5,6 +5,7 @@
   import OptionsButtons from './OptionsButtons.svelte';
   import ChatInput from './ChatInput.svelte';
   import { menuConfig } from '$lib/config';
+  import type { OptionsButtonType } from '$lib/types';
   import { n8nService } from '$lib/services/n8nService';
   import { checkConnectionStatus } from '$lib/utils/connectionUtils';
   import type { ChatState, Message, Params } from '$lib/types';
@@ -387,7 +388,7 @@
   });
 
   // Effect to check initial connection status on component mount
-  onMount(async () => {
+  onMount(() => {
     // Add scroll event listener to track scroll position
     if (chatContainer) {
       const handleScroll = () => {
@@ -409,17 +410,15 @@
     // This should ideally point to a lightweight, always-on endpoint of your backend/service
     const n8nEndpoint = import.meta.env.VITE_N8N_API_URL || '/api/chat'; // Replace with actual endpoint if different
 
-    const checkStatus = async () => {
-      const online = await checkConnectionStatus(n8nEndpoint, 5000); // 5-second timeout
+    // Check connection status
+    checkConnectionStatus(n8nEndpoint, 5000).then(online => {
       isConnected = online;
       if (!online) {
         console.warn('Initial connection check failed. Service may be unreachable.');
         // Optionally, add a message to the chat here or show a different UI indicator
         // addMessage("assistant", "Warning: Cannot connect to the service. Features may be limited.");
       }
-    };
-
-    await checkStatus();
+    });
 
     // Set up inactivity timer 
     inactivityTimerRef = window.setInterval(() => {
@@ -508,7 +507,7 @@
               {msg.role === "user" ? "You" : "Assistant"}
             </span>
           </div>
-          <ChatMessage {msg} />
+          <ChatMessage message={msg} />
         </div>
       {/each}
 
@@ -517,7 +516,7 @@
           {#if chatState.stage === "initial"}
             <div class="mt-4">
               <OptionsButtons
-                buttons={menuConfig.menuButtons.main}
+                buttons={menuConfig.menuButtons.main as OptionsButtonType[]}
                 on:select={e => handleInitialOption(e.detail)}
               />
             </div>
@@ -555,7 +554,7 @@
           {:else}
             <div class="mt-4">
               <OptionsButtons
-                buttons={menuConfig.menuButtons.conversation}
+                buttons={menuConfig.menuButtons.conversation as OptionsButtonType[]}
                 on:select={e => handlePostResponseOption(e.detail)}
               />
             </div>

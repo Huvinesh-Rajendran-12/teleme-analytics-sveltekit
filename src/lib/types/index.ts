@@ -40,3 +40,12 @@ export interface AnalyticsData {
   avgMessagesPerConversation: number;
   topActions: { action: string; count: number }[];
 }
+
+export type OptionsButtonType = {
+  id: string;
+  label: string;
+  icon: string;
+  variant: 'primary' | 'secondary' | 'ghost';
+  isVisible: boolean;
+  order: number;
+};

@@ -149,7 +149,7 @@
           </div>
         </div>
       {:else}
-        <ChatContainer {params} {onRestartConversation} />
+        <ChatContainer {params} onRestartConversation={restartConversation} />
       {/if}
     </div>
   </div>

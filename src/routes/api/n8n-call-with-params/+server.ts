@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { logError, logInfo, logDebug } from '$lib/utils/secureLogger';
 
-export const POST = async ({ request }) => {
+export const POST = async ({ request }: { request: Request }) => {
   try {
     // Parse the JSON body from the request
     const body = await request.json();
@@ -10,13 +10,13 @@ export const POST = async ({ request }) => {
     // Validate required parameters
     if (!sessionId || !userId || !userName || !period || !message || !operation || !patientId) {
       logError('API n8n-call-with-params: Missing required parameters', { body });
-      return json({ 
-        success: false, 
-        error: 'Missing required parameters' 
+      return json({
+        success: false,
+        error: 'Missing required parameters'
       }, { status: 400 });
     }
 
-    logInfo('API n8n-call-with-params: Processing request', { 
+    logInfo('API n8n-call-with-params: Processing request', {
       sessionId,
       userId,
       operation,
@@ -25,26 +25,32 @@ export const POST = async ({ request }) => {
 
     // In a real implementation, this would call your n8n instance or other backend service
     // For this example, we'll return a simulated response
-    
+
     // Simulate API processing time
     await new Promise(resolve => setTimeout(resolve, 1500));
-    
+
     // Generate a sample response based on the period
     const response = generateSampleResponse(period, patientId);
-    
+
     logDebug('API n8n-call-with-params: Returning successful response');
-    
+
     return json({
       success: true,
       data: response
     });
-    
+
   } catch (error: unknown) {
-    logError('API n8n-call-with-params: Error processing request', { error: error.message });
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    return json({ 
-      success: false, 
-      error: errorMessage 
+    // Safely extract the error message for logging and the response
+    const errorMessageForLog = error instanceof Error ? error.message : String(error);
+    const errorMessageForResponse = error instanceof Error ? error.message : 'An unknown error occurred';
+
+    // Log the error with the extracted message
+    logError('API n8n-call-with-params: Error processing request', { error: errorMessageForLog });
+
+    // Return the error response
+    return json({
+      success: false,
+      error: errorMessageForResponse
     }, { status: 500 });
   }
 };
@@ -52,7 +58,7 @@ export const POST = async ({ request }) => {
 // Helper function to generate a sample response based on the period
 function generateSampleResponse(period: number, patientId: string | number): string {
   const periodText = period === 1 ? "1 month" : period === 3 ? "3 months" : "6 months";
-  
+
   // Generic sample data
   const heartRateAvg = 75 + Math.floor(Math.random() * 10);
   const stepCount = 6000 + Math.floor(Math.random() * 4000);
@@ -60,14 +66,14 @@ function generateSampleResponse(period: number, patientId: string | number): str
   const exerciseMinutes = 120 + Math.floor(Math.random() * 120);
   const weightChange = (Math.random() * 2 - 1).toFixed(1);
   const bloodPressureReadings = [];
-  
+
   // Generate some random blood pressure readings
   for (let i = 0; i < 3; i++) {
     const systolic = 115 + Math.floor(Math.random() * 15);
     const diastolic = 75 + Math.floor(Math.random() * 10);
     bloodPressureReadings.push(`${systolic}/${diastolic}`);
   }
-  
+
   // Return a formatted summary of health tracker data
   return `
 # Health Tracker Summary for the Past ${periodText}

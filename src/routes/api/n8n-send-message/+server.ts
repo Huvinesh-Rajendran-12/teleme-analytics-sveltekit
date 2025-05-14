@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { logError, logInfo, logDebug } from '$lib/utils/secureLogger';
 
-export const POST = async ({ request }) => {
+export const POST = async ({ request }: { request: Request }) => {
   try {
     // Parse the JSON body from the request
     const body = await request.json();
@@ -10,13 +10,13 @@ export const POST = async ({ request }) => {
     // Validate required parameters
     if (!sessionId || !userId || !message || !operation || !patientId) {
       logError('API n8n-send-message: Missing required parameters', { body });
-      return json({ 
-        success: false, 
-        error: 'Missing required parameters' 
+      return json({
+        success: false,
+        error: 'Missing required parameters'
       }, { status: 400 });
     }
 
-    logInfo('API n8n-send-message: Processing question', { 
+    logInfo('API n8n-send-message: Processing question', {
       sessionId,
       userId,
       operation,
@@ -25,26 +25,26 @@ export const POST = async ({ request }) => {
 
     // In a real implementation, this would call your n8n instance or other backend service
     // For this example, we'll return a simulated response based on the question
-    
+
     // Simulate API processing time
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     // Generate a response based on the question
     const response = generateQuestionResponse(message, patientId);
-    
+
     logDebug('API n8n-send-message: Returning successful response');
-    
+
     return json({
       success: true,
       data: response
     });
-    
+
   } catch (error: unknown) {
     logError('API n8n-send-message: Error processing request', { error });
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    return json({ 
-      success: false, 
-      error: errorMessage 
+    return json({
+      success: false,
+      error: errorMessage
     }, { status: 500 });
   }
 };
@@ -53,7 +53,7 @@ export const POST = async ({ request }) => {
 function generateQuestionResponse(question: string, _patientId: string | number): string {
   // Convert question to lowercase for easier matching
   const q = question.toLowerCase();
-  
+
   // Check for common question patterns and provide appropriate responses
   if (q.includes('blood pressure') || q.includes('bp')) {
     return `
@@ -61,13 +61,13 @@ Your blood pressure readings over the last period have been generally stable, wi
 
 Your most recent readings were:
 - Yesterday: 118/76 mmHg
-- 3 days ago: 122/80 mmHg  
+- 3 days ago: 122/80 mmHg
 - 1 week ago: 117/75 mmHg
 
 These readings are within the normal range. Would you like recommendations for maintaining healthy blood pressure?
     `;
   }
-  
+
   if (q.includes('heart rate') || q.includes('pulse') || q.includes('bpm')) {
     return `
 Your average resting heart rate has been 72 BPM. Your heart rate typically ranges from 65-80 BPM during rest and increases appropriately during exercise.
@@ -80,7 +80,7 @@ During your recorded exercise sessions, your heart rate reached:
 This pattern is consistent with healthy cardiovascular function for your age and activity level.
     `;
   }
-  
+
   if (q.includes('step') || q.includes('walk')) {
     return `
 Your step count data shows:
@@ -94,7 +94,7 @@ You've exceeded 10,000 steps on 5 days in the last month. Your activity tends to
 Would you like suggestions for increasing your daily step count or setting up a walking schedule?
     `;
   }
-  
+
   if (q.includes('sleep') || q.includes('slept')) {
     return `
 Your sleep data indicates:
@@ -109,7 +109,7 @@ Your REM sleep averages 1.5 hours per night, which is within normal ranges. Your
 Would you like some suggestions for improving your sleep quality?
     `;
   }
-  
+
   if (q.includes('weight') || q.includes('kg') || q.includes('pound') || q.includes('lb')) {
     return `
 Your weight has remained relatively stable over the past period:
@@ -121,7 +121,7 @@ Your weight has remained relatively stable over the past period:
 Your weight fluctuates within a 1.2 kg range throughout each week, which is normal and typically related to water retention and food intake timing.
     `;
   }
-  
+
   if (q.includes('exercise') || q.includes('workout') || q.includes('activity')) {
     return `
 Your exercise data shows you've been active for approximately 185 minutes over the past week:
@@ -135,7 +135,7 @@ Your activity intensity has been moderate overall. According to your heart rate 
 Would you like recommendations for optimizing your workout routine?
     `;
   }
-  
+
   // Default response for other questions
   return `
 Based on your health tracker data, I can provide information about several health metrics including steps, sleep, heart rate, blood pressure, exercise, and weight changes.

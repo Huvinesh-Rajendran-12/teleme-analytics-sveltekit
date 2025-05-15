@@ -158,7 +158,7 @@ export const DELETE: RequestHandler = async ({ request }) => {
       if (payload.role !== 'admin') {
         return json({ error: 'Insufficient permissions' }, { status: 403 });
       }
-    } catch (err) {
+    } catch {
       return json({ error: 'Invalid token' }, { status: 401 });
     }
 

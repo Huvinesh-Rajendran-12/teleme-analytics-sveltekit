@@ -265,7 +265,7 @@ export async function updateUser(userId: string, userData: UserUpdateRequest): P
       return {
         ...mockUser,
         ...userData,
-        password: undefined // Don't include password in response
+
       };
     }
 

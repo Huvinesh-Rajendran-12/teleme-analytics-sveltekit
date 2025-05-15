@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import { getStoredAdminToken } from '$lib/utils/auth';
+  import { getStoredAdminToken, clearAdminToken } from '$lib/utils/auth';
   import { logDebug } from '$lib/utils/secureLogger';
 
   // Props
@@ -10,6 +10,12 @@
 
   // State
   let isLoading = true;
+  
+  // Handle logout
+  function handleLogout() {
+    clearAdminToken();
+    goto('/admin/login');
+  }
 
   onMount(() => {
     // Skip auth check for login page
@@ -52,23 +58,37 @@
             <div class="ml-6 flex items-center space-x-4">
               <a 
                 href="/admin/analytics-chatbot" 
-                class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium {$page.url.pathname.includes('analytics-chatbot') ? 'text-blue-600 border-b-2 border-blue-600' : ''}"
+                class="rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 {$page.url.pathname.includes('analytics-chatbot') ? 'border-b-2 border-blue-600 text-blue-600' : ''}"
               >
                 Analytics Chatbot
               </a>
               <a 
                 href="/admin/health-tracker" 
-                class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium {$page.url.pathname.includes('health-tracker') ? 'text-blue-600 border-b-2 border-blue-600' : ''}"
+                class="rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 {$page.url.pathname.includes('health-tracker') ? 'border-b-2 border-blue-600 text-blue-600' : ''}"
               >
                 Health Tracker
               </a>
               <a 
                 href="/admin/dashboard" 
-                class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium {$page.url.pathname === '/admin/dashboard' ? 'text-blue-600 border-b-2 border-blue-600' : ''}"
+                class="rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 {$page.url.pathname === '/admin/dashboard' ? 'border-b-2 border-blue-600 text-blue-600' : ''}"
               >
                 Statistics
               </a>
+              <a 
+                href="/admin/users" 
+                class="rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 {$page.url.pathname.includes('/admin/users') ? 'border-b-2 border-blue-600 text-blue-600' : ''}"
+              >
+                Users
+              </a>
             </div>
+          </div>
+          <div class="flex items-center">
+            <button 
+              on:click={handleLogout}
+              class="ml-4 rounded-md bg-red-100 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-200"
+            >
+              Logout
+            </button>
           </div>
         </div>
       </div>

@@ -2,41 +2,41 @@
   export let disabled = false;
   export let onSendQuestion: (message: string) => void;
   export let maxLength: number | undefined = undefined;
-  console.log("onSendQuestion prop:", onSendQuestion);
-  
+  // console.log("onSendQuestion prop:", onSendQuestion);
+
   let inputMessage = '';
   let inputElement: HTMLTextAreaElement;
-  
+
   function handleKeyDown(event: KeyboardEvent) {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       handleSend();
     }
   }
-  
+
   function handleSend() {
     if (inputMessage.trim() === '' || disabled) return;
-    
+
     onSendQuestion(inputMessage.trim());
     inputMessage = '';
-    
+
     // Reset textarea height
     if (inputElement) {
       inputElement.style.height = 'auto';
     }
   }
-  
+
   function adjustTextareaHeight() {
     if (!inputElement) return;
-    
+
     // Reset height to auto so we can determine the new scrollHeight
     inputElement.style.height = 'auto';
-    
+
     // Set to scrollHeight to have the textarea grow
     const maxHeight = 150; // Maximum height before scrolling
     inputElement.style.height = `${Math.min(inputElement.scrollHeight, maxHeight)}px`;
   }
-  
+
   $: {
     // This will run when inputMessage changes
     if (inputElement) {
@@ -59,7 +59,7 @@
       maxlength={maxLength}
       {disabled}
     ></textarea>
-    
+
     <button
       on:click={handleSend}
       class="ml-2 mb-2 p-2 rounded-full bg-blue-500 text-white focus:outline-none hover:bg-blue-600 disabled:opacity-50 disabled:pointer-events-none"

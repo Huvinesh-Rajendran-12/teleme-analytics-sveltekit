@@ -1,5 +1,4 @@
-<script lang="ts">
-  import { onMount, onDestroy, afterUpdate, tick } from 'svelte';
+<script lang="ts">import { onMount, onDestroy, tick } from 'svelte';
   import { v7 } from 'uuid';
   import ChatMessage from './ChatMessage.svelte';
   import OptionsButtons from './OptionsButtons.svelte';
@@ -23,7 +22,7 @@
   let durationInput = "12";
   let isScrolledAway = false;
   let durationError: string | null = null;
-  let chatInputError: string | null = null;
+  // chatInputError variable removed as it was unused
 
   // Maximum question length allowed
   const MAX_QUESTION_LENGTH = 1000;
@@ -283,12 +282,12 @@
   }
 
   async function handleSendQuestion(question: string) {
-    chatInputError = null; // Clear previous errors
-
+    // Removed chatInputError assignments as the variable is unused
     // Check for question length
     if (question.length > MAX_QUESTION_LENGTH) {
-      chatInputError = `Your question is too long. Please limit your input to ${MAX_QUESTION_LENGTH} characters.`;
-      chatState.loading = false;
+      console.warn(`Question exceeds max length (${MAX_QUESTION_LENGTH}): ${question}`);
+      // Handle the error appropriately, e.g., show a notification, since chatInputError is not displayed
+      chatState.loading = false; // Ensure loading is off if we return early
       return;
     }
 
@@ -297,9 +296,10 @@
       /(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|TRUNCATE|UNION|JOIN|--|\/\*|<\/?script>|<\/?iframe>|javascript:|eval\s*\(|function\s*\(|\=>|\{|\})/i;
 
     if (disallowedPattern.test(question)) {
-      chatInputError = "Please enter only plain text. SQL, code, or special script tags are not allowed.";
+       console.warn(`Question contains disallowed pattern: ${question}`);
+       // Handle the error appropriately, e.g., show a notification
       chatState.loading = false; // Ensure loading is off
-      return;
+      return; // Stop execution if validation fails
     }
 
     // Check connection status before attempting the API call
@@ -314,6 +314,11 @@
 
     chatState.loading = true;
     addMessage("user", question);
+
+    // Wait for the DOM to update after adding the user message, then scroll
+    await tick();
+    scrollToBottom();
+
 
     try {
       // Verify auth token first
@@ -375,23 +380,18 @@
     }
   }
 
-  // Only scroll to bottom on initial load or when user sends a message, not when AI responds
-  afterUpdate(() => {
-    const lastMessage = chatState.messages[chatState.messages.length - 1];
-    if (
-      chatState.messages.length === 0 ||
-      (lastMessage && lastMessage.role === "user")
-    ) {
-      scrollToBottom();
-      isScrolledAway = false;
-    }
-  });
+  // afterUpdate hook removed as scrolling is now handled via tick() in handleSendQuestion
+  // The previous afterUpdate also handled scrolling when messages were empty or last was user,
+  // but scrolling on empty messages seems unnecessary, and scrolling on user messages is
+  // now explicitly handled.
 
   // Effect to check initial connection status on component mount
   onMount(() => {
+    let handleScroll: () => void; // Declare outside to make it referenceable in cleanup
+
     // Add scroll event listener to track scroll position
     if (chatContainer) {
-      const handleScroll = () => {
+       handleScroll = () => { // Assign function to the variable
         const { scrollTop, scrollHeight, clientHeight } = chatContainer;
         const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
         isScrolledAway = !isAtBottom;
@@ -420,7 +420,7 @@
       }
     });
 
-    // Set up inactivity timer 
+    // Set up inactivity timer
     inactivityTimerRef = window.setInterval(() => {
       const inactiveTime = Date.now() - lastActivity;
       const TIMEOUT_MINUTES = Number(import.meta.env.VITE_ANALYTICS_CHATBOT_TIMEOUT) || 5; // Default to 5 minutes
@@ -445,8 +445,8 @@
       document.removeEventListener("keypress", trackActivity);
       document.removeEventListener("touchstart", trackActivity);
 
-      if (chatContainer) {
-        chatContainer.removeEventListener("scroll", () => {});
+      if (chatContainer && handleScroll) { // Check if handleScroll was assigned
+        chatContainer.removeEventListener("scroll", handleScroll); // Use the variable
       }
     };
   });
@@ -455,8 +455,7 @@
     if (inactivityTimerRef) {
       clearInterval(inactivityTimerRef);
     }
-  });
-</script>
+  });</script>
 
 <div class="flex flex-col h-full w-full" data-testid="chat-container">
   <div

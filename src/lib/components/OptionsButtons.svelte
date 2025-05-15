@@ -1,32 +1,29 @@
-<script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+<script lang="ts">// Define the button type
+export let buttons: {
+  id: string;
+  label: string;
+  icon: string;
+  variant: "primary" | "secondary" | "ghost";
+  isVisible: boolean;
+  order: number;
+}[] = [];
 
-  // Define the button type
-  export let buttons: {
-    id: string;
-    label: string;
-    icon: string;
-    variant: "primary" | "secondary" | "ghost";
-    isVisible: boolean;
-    order: number;
-  }[] = [];
+// Props for callback function
+export let onSelect: (id: string) => void;
 
-  // Props for callback function
-  export let onSelect: (id: string) => void;
-
-  // Handle button click
-  function handleSelect(id: string) {
-    onSelect(id);
-  }
+// Handle button click
+function handleSelect(id: string) {
+  onSelect(id);
+}
 </script>
 
 <div class="flex flex-wrap justify-center gap-3">
   {#each buttons.filter(b => b.isVisible).sort((a, b) => a.order - b.order) as button}
-    <button 
+    <button
       on:click={() => handleSelect(button.id)}
-      class="option-button {button.variant === 'primary' 
-        ? 'bg-blue-500 hover:bg-blue-600 text-white' 
-        : button.variant === 'secondary' 
+      class="option-button {button.variant === 'primary'
+        ? 'bg-blue-500 hover:bg-blue-600 text-white'
+        : button.variant === 'secondary'
           ? 'bg-gray-200 hover:bg-gray-300 text-gray-800'
           : 'bg-transparent hover:bg-gray-100 text-gray-700 border border-gray-300'}"
     >

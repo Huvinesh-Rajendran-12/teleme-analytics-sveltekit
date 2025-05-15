@@ -1,19 +1,10 @@
 <script lang="ts">
+  import BaseIcon from './BaseIcon.svelte';
   export let size = 24;
   export let color = "currentColor";
   export let strokeWidth = 2;
 </script>
 
-<svg
-  xmlns="http://www.w3.org/2000/svg"
-  width={size}
-  height={size}
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke={color}
-  stroke-width={strokeWidth}
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
+<BaseIcon {size} {color} {strokeWidth}>
   <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-</svg>
+</BaseIcon>

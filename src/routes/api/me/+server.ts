@@ -1,10 +1,25 @@
 import { json } from '@sveltejs/kit';
-import { logError, logInfo } from '$lib/utils/secureLogger';
+import { logError, logInfo, logDebug } from '$lib/utils/secureLogger';
+import * as jose from 'jose';
+import type { RequestEvent } from './$types';
 
-export const GET = async ({ url }: { url: URL }) => {
+// Environment variable to store JWT secret (would be properly configured in production)
+const JWT_SECRET = import.meta.env.VITE_JWT_SECRET || 'your-secret-key-for-development';
+
+export async function GET({ url, request }: RequestEvent) {
     const authToken = url.searchParams.get('auth_token');
+    
+    // Try to get token from Authorization header if not in query params
+    let token = authToken;
+    if (!token) {
+        const authHeader = request.headers.get('Authorization');
+        if (authHeader?.startsWith('Bearer ')) {
+            token = authHeader.substring(7);
+            logDebug('Found auth token in Authorization header');
+        }
+    }
 
-    if (!authToken) {
+    if (!token) {
         logError('API /me: Missing auth_token parameter');
         return json({
             error: 'Authentication token is required'
@@ -12,35 +27,60 @@ export const GET = async ({ url }: { url: URL }) => {
     }
 
     try {
-        // In a real implementation, you would validate the auth_token
-        // against a database or authentication service
-
-        // For demonstration purposes, we're returning mock data
-        // In production, you would fetch this data from your backend or authenticate with your auth provider
-
-        // Simulate token validation - this is where you'd typically verify the token
-        if (authToken === 'invalid_token') {
-            logError('API /me: Invalid auth_token provided');
-            return json({
-                error: 'Invalid authentication token'
-            }, { status: 401 });
+        // Verify JWT token (in production, this would also check expiration, issuer, etc.)
+        const secretKey = new TextEncoder().encode(JWT_SECRET);
+        let payload;
+        
+        try {
+            // Verify with jose library
+            const result = await jose.jwtVerify(token, secretKey);
+            payload = result.payload;
+            logDebug('JWT verification successful', { subject: payload.sub });
+        } catch (tokenError) {
+            logError('JWT verification failed', { error: tokenError });
+            
+            // If verification fails with jose, fallback to development mode with mock data
+            if (import.meta.env.DEV) {
+                // In development mode, allow using a specific token for testing
+                if (token === 'health-tracker-test-token') {
+                    logInfo('Using test token in development mode');
+                    payload = {
+                        sub: 'test-user',
+                        userId: '12345',
+                        userName: 'Test User',
+                        patientId: 'PT78901',
+                        exp: Math.floor(Date.now() / 1000) + 3600 // 1 hour from now
+                    };
+                } else {
+                    throw new Error('Invalid token');
+                }
+            } else {
+                throw new Error('Invalid token');
+            }
         }
 
-        // Mock user data - in a real app, this would come from your auth/user service
+        // Extract user data from payload
         const userData = {
-            userId: '12345',
-            userName: 'John Doe',
-            patientId: 'PT78901',
+            userId: payload.userId || payload.user_id || payload.sub,
+            userName: payload.userName || payload.user_name || 'User',
+            patientId: payload.patientId || payload.patient_id,
             // Add any other fields your application needs
         };
 
-        logInfo('API /me: Successfully authenticated user', { userId: userData.userId });
+        // Make sure we have the minimal required data
+        if (!userData.userId || !userData.patientId) {
+            logError('API /me: Required fields missing in token payload', { fields: 'userId or patientId' });
+            return json({
+                error: 'Token is missing required user information'
+            }, { status: 401 });
+        }
 
+        logInfo('API /me: Successfully authenticated user', { userId: userData.userId });
         return json(userData);
     } catch (error) {
         logError('API /me: Error during authentication', { error });
         return json({
-            error: 'Authentication failed'
-        }, { status: 500 });
+            error: error instanceof Error ? error.message : 'Authentication failed'
+        }, { status: 401 });
     }
-};
+}

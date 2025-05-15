@@ -1,46 +1,79 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import HealthTrackerChat from '$lib/components/HealthTrackerChat.svelte'; // Assuming this component will be created
-  import { logInfo, logError } from '$lib/utils/secureLogger'; // Assuming utils are ported
+  import { browser } from '$app/environment';
+  import HealthTrackerChat from '$lib/components/HealthTrackerChat.svelte';
+  import { logInfo, logError, logDebug } from '$lib/utils/secureLogger';
 
   let patientId: string | null = null;
   let userId: string | null = null;
   let userName: string | null = null;
   let loading: boolean = true;
+  let error: string | null = null;
+  let authToken: string | null = null;
 
   onMount(async () => {
+    if (!browser) return;
+
     async function getUserData() {
       try {
+        // Extract auth_token from the URL parameters
         const urlParams = new URLSearchParams(window.location.search);
-        const authToken = urlParams.get("auth_token");
+        authToken = urlParams.get("auth_token");
 
-        // Assume an API endpoint exists in SvelteKit that replicates the Node.js one
-        const response = await fetch(`/api/me?auth_token=${encodeURIComponent(authToken ?? "")}`, {
+        // Check authorization header (if set by meta tag or similar)
+        try {
+          const authHeader = document
+            .querySelector('meta[name="authorization"]')
+            ?.getAttribute("content");
+          
+          if (authHeader) {
+            authToken = authHeader.startsWith("Bearer ")
+              ? authHeader.substring(7)
+              : authHeader;
+            logDebug("Auth token found in meta tag");
+          }
+        } catch (headerError) {
+          logError("Error accessing authorization header meta tag", headerError);
+        }
+
+        if (!authToken) {
+          error = "Authentication token is required";
+          logError("No auth token found in URL or headers");
+          goto("/unauthorized?error=Authentication+required");
+          return;
+        }
+
+        // Request user data from the API
+        const response = await fetch(`/api/me?auth_token=${encodeURIComponent(authToken)}`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
+            "Authorization": `Bearer ${authToken}`
           },
         });
 
         const data = await response.json();
-        logInfo("Response:", JSON.stringify(data));
+        logInfo("User data received");
 
         if (!response.ok) {
-          throw new Error("Failed to get user data");
+          throw new Error(data.error || "Failed to get user data");
         }
 
         if (data.userId && data.userName && data.patientId) {
           userId = data.userId;
           userName = data.userName;
           patientId = data.patientId;
+          logDebug("User authenticated successfully", { userName });
         } else {
+          error = "Required user data missing";
           logError("No userId, userName, or patientId found in response");
           goto("/unauthorized?error=Authentication+failed");
         }
       } catch (error) {
-        logError("Error getting user data:", error);
-        goto("/unauthorized?error=Authentication+failed");
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        logError("Error getting user data", { error: errorMessage });
+        goto(`/unauthorized?error=${encodeURIComponent(errorMessage)}`);
       } finally {
         loading = false;
       }

@@ -60,9 +60,7 @@
             const token = authHeader.startsWith('Bearer ')
               ? authHeader.substring(7)
               : authHeader;
-            console.log(
-              'Auth token found in header meta tag for analytics chat.',
-            );
+            // Auth token found in header meta tag for analytics chat
             foundToken = token;
           }
         } catch (error) {
@@ -74,9 +72,7 @@
         
         // 2. Fallback: Extract auth_token from query parameters if not found in header
         if (!foundToken && auth_token_url) {
-          console.log(
-            'Auth token found in URL parameters for analytics chat.',
-          );
+          // Auth token found in URL parameters for analytics chat
           foundToken = auth_token_url;
         }
         

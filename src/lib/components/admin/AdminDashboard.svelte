@@ -18,31 +18,9 @@
   // Import the Icon component
   import { Icon } from '$lib/icons';
 
-  // Define the StatsCard component interface
-  interface StatsCardProps {
-    title: string;
-    value: string | number;
-    icon: string;
-  }
+  // Component state and properties
 
-  // StatsCard component
-  const StatsCard = ({ title, value, icon }: StatsCardProps) => {
-    return `
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 transition-all duration-300 ease-in-out hover:shadow-xl hover:transform hover:scale-[1.03]">
-        <div class="flex items-center">
-          <div class="flex-shrink-0 bg-slate-100 rounded-md p-3">
-            <div use:icon="${icon}"></div>
-          </div>
-          <div class="ml-5">
-            <h3 class="text-gray-500 text-sm">${title}</h3>
-            <div class="mt-1 text-2xl font-semibold">
-              ${value}
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-  }
+  /* Unused StatsCard component removed */
 
   // State
   let loading = true;
@@ -126,23 +104,7 @@
     }
   }
 
-  // Directive to use our Icon component
-  function icon(node: HTMLDivElement, iconName: string) {
-    const iconInstance = new Icon({
-      target: node,
-      props: {
-        name: iconName,
-        size: 24,
-        color: "#2563eb"
-      }
-    });
-
-    return {
-      destroy() {
-        iconInstance.$destroy();
-      }
-    };
-  }
+  // No longer needed - all icons now use the Icon component directly
 
   onMount(() => {
     logDebug("AdminDashboard component mounted - fetching stats");

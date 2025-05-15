@@ -9,7 +9,7 @@
   let userId: string | null = null;
   let userName: string | null = null;
   let loading: boolean = true;
-  let error: string | null = null;
+  // Loading and state variables
   let authToken: string | null = null;
 
   onMount(async () => {
@@ -38,7 +38,7 @@
         }
 
         if (!authToken) {
-          error = "Authentication token is required";
+          // Authentication failed - redirect to unauthorized page
           logError("No auth token found in URL or headers");
           goto("/unauthorized?error=Authentication+required");
           return;
@@ -66,7 +66,7 @@
           patientId = data.patientId;
           logDebug("User authenticated successfully", { userName });
         } else {
-          error = "Required user data missing";
+          // User data is missing - redirect to unauthorized page
           logError("No userId, userName, or patientId found in response");
           goto("/unauthorized?error=Authentication+failed");
         }

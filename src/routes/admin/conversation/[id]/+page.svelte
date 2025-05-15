@@ -8,7 +8,7 @@
   import { getApplicationDisplayName } from '$lib/config/admin';
   import { logDebug, logError } from '$lib/utils/secureLogger';
   import AdminLayout from '$lib/components/admin/AdminLayout.svelte';
-  import type { ConversationDetail, Message } from '$lib/types/conversations';
+  import type { ConversationDetail } from '$lib/types/conversations';
 
   // State
   let conversation: ConversationDetail | null = null;

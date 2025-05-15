@@ -376,11 +376,11 @@ export async function fetchAnalyticsChatbotStats(): Promise<UserActivityStats | 
               newUsersThisWeek: parseInt(String(analyticsRaw.new_users_this_week || "0"), 10) || 0,
               newUsersThisMonth: parseInt(String(analyticsRaw.new_users_this_month || "0"), 10) || 0,
               mostRecentActivity: String(analyticsRaw.most_recent_activity || new Date(0).toISOString()),
-              timeSinceLastActivity: {
-                hours: (analyticsRaw.time_since_last_activity as Record<string, number>)?.hours || 0,
-                minutes: (analyticsRaw.time_since_last_activity as Record<string, number>)?.minutes || 0,
-                seconds: (analyticsRaw.time_since_last_activity as Record<string, number>)?.seconds || 0,
-                milliseconds: (analyticsRaw.time_since_last_activity as Record<string, number>)?.milliseconds || 0
+              timeSinceLastActivity: analyticsRaw.time_since_last_activity as Record<string, number> || {
+                hours: 0,
+                minutes: 0,
+                seconds: 0,
+                milliseconds: 0,
               },
             }
           : null;
@@ -461,11 +461,11 @@ export async function fetchHealthTrackerStats(): Promise<UserActivityStats | nul
               newUsersThisWeek: parseInt(String(healthTrackerRaw.new_users_this_week || "0"), 10) || 0,
               newUsersThisMonth: parseInt(String(healthTrackerRaw.new_users_this_month || "0"), 10) || 0,
               mostRecentActivity: String(healthTrackerRaw.most_recent_activity || new Date(0).toISOString()),
-              timeSinceLastActivity: {
-                hours: (healthTrackerRaw.time_since_last_activity as Record<string, number>)?.hours || 0,
-                minutes: (healthTrackerRaw.time_since_last_activity as Record<string, number>)?.minutes || 0,
-                seconds: (healthTrackerRaw.time_since_last_activity as Record<string, number>)?.seconds || 0,
-                milliseconds: (healthTrackerRaw.time_since_last_activity as Record<string, number>)?.milliseconds || 0
+              timeSinceLastActivity: healthTrackerRaw.time_since_last_activity as Record<string, number> || {
+                hours: 0,
+                minutes: 0,
+                seconds: 0,
+                milliseconds: 0,
               },
             }
           : null;

@@ -75,7 +75,7 @@
   };
   
   // Get the requested icon component
-  const IconComponent = iconComponents[name];
+  const IconComponent = iconComponents[name as keyof typeof iconComponents];
 </script>
 
 {#if IconComponent}

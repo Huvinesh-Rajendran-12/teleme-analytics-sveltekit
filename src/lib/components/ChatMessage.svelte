@@ -1,4 +1,5 @@
 <script lang="ts">
+
   export let message: {
     id: string;
     role: import('$lib/types').MessageRole;

@@ -56,9 +56,9 @@ const POST_RESPONSE_BUTTONS = [
 ];
 
 const DATE_RANGE_BUTTONS = [
-  { id: "1month", label: "1 Month", icon: "📅", variant: "primary" as const, isVisible: true, order: 1 },
-  { id: "3months", label: "3 Months", icon: "📅", variant: "primary" as const, isVisible: true, order: 2 },
-  { id: "6months", label: "6 Months", icon: "📅", variant: "primary" as const, isVisible: true, order: 3 }
+  { id: "1month", label: "1 Month", icon: "📅", variant: "gradient-blue-teal" as const, isVisible: true, order: 1 },
+  { id: "3months", label: "3 Months", icon: "📅", variant: "gradient-blue-teal" as const, isVisible: true, order: 2 },
+  { id: "6months", label: "6 Months", icon: "📅", variant: "gradient-blue-teal" as const, isVisible: true, order: 3 }
 ];
 
 const QUICK_CHECK_TIMEOUT = 2000;

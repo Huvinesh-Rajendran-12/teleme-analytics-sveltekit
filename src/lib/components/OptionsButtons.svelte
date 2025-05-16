@@ -6,7 +6,7 @@ export let buttons: {
   id: string;
   label: string;
   icon: string;
-  variant: "primary" | "secondary" | "ghost";
+  variant: "primary" | "secondary" | "ghost" | "gradient-blue-teal";
   isVisible: boolean;
   order: number;
 }[] = [];
@@ -42,7 +42,9 @@ function handleSelect(id: string) {
         ? 'bg-blue-500 hover:bg-blue-600 text-white'
         : button.variant === 'secondary'
           ? 'bg-gray-200 hover:bg-gray-300 text-gray-800'
-          : 'bg-transparent hover:bg-gray-100 text-gray-700 border border-gray-300'}"
+          : button.variant === 'gradient-blue-teal'
+            ? 'bg-gradient-to-br-blue-teal text-white shadow hover:brightness-110'
+            : 'bg-transparent hover:bg-gray-100 text-gray-700 border border-gray-300'}"
     >
       {#if button.icon}
         {#if getIconName(button.icon)}

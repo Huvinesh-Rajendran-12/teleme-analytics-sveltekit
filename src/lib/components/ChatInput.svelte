@@ -9,6 +9,8 @@
   let inputMessage = '';
   let inputElement: HTMLTextAreaElement;
 
+  $: charsOverLimit = maxLength ? Math.max(0, inputMessage.length - maxLength) : 0;
+
   function handleKeyDown(event: KeyboardEvent) {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
@@ -64,13 +66,21 @@
 
     <button
       on:click={handleSend}
-      class="ml-2 mb-2 p-2 rounded-full bg-blue-500 text-white focus:outline-none hover:bg-blue-600 disabled:opacity-50 disabled:pointer-events-none"
-      disabled={inputMessage.trim() === '' || disabled}
+      class="ml-2 mb-2 p-2 rounded-full bg-green-500 text-white focus:outline-none hover:bg-green-600 disabled:opacity-50 disabled:pointer-events-none"
+      disabled={inputMessage.trim() === '' || disabled || charsOverLimit > 0}
       aria-label="Send message"
     >
       <Icon name="send" size={20} />
     </button>
   </div>
+  {#if maxLength !== undefined}
+    <p class="text-gray-500 text-xs mt-1 text-right">{inputMessage.length}/{maxLength}</p>
+  {/if}
+  {#if charsOverLimit > 0}
+    <p class="text-red-500 text-sm mt-1 text-right">
+      Characters over limit: {charsOverLimit}
+    </p>
+  {/if}
 </div>
 
 <style>

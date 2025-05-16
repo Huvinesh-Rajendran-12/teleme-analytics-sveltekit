@@ -5,6 +5,7 @@ import type { ConversationListItem, ConversationsList as ConversationsListType, 
 import { parseMessage } from '$lib/utils/messageParser';
 import { getApplicationDisplayName } from '$lib/config/admin';
 import { logDebug, logError } from '$lib/utils/secureLogger';
+import { parseAIMessageContent } from '$lib/utils/markdownParser';
 // 'SvelteComponent' is not used, removing import
 // import { SvelteComponent } from 'svelte';
 
@@ -136,27 +137,15 @@ function renderMessage(messageItem: MessageItem, _index: number) {
     const parsedMessage = parseMessage(messageItem.message);
 
     if (parsedMessage.role === 'ai' || parsedMessage.role === 'assistant') {
-      let aiContentToDisplay = parsedMessage.content;
-      try {
-        const aiResponseJson = JSON.parse(parsedMessage.content);
-        if (
-          aiResponseJson &&
-          aiResponseJson.output &&
-          typeof aiResponseJson.output.response === "string"
-        ) {
-          aiContentToDisplay = aiResponseJson.output.response;
-        }
-      } catch {
-        // Fall back to raw content if there's an error
-      }
-
+      const content = parseAIMessageContent(parsedMessage);
+      
       return {
         role: 'assistant',
-        content: aiContentToDisplay
+        content: content
       };
     }
 
-    // Human message
+    // Human message - don't parse markdown for human messages
     return {
       role: 'human',
       content: parsedMessage.content
@@ -290,7 +279,7 @@ function decrementPage() {
                             <div class="rounded-md bg-blue-50 p-3 mb-2">
                               <b>AI:</b>
                               <div class="prose prose-sm max-w-none inline-block align-top">
-                                {renderedMsg.content}
+                                {@html renderedMsg.content}
                               </div>
                             </div>
                           {:else if renderedMsg.role === 'human'}

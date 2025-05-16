@@ -7,6 +7,7 @@
   import { parseMessage } from '$lib/utils/messageParser';
   import { getApplicationDisplayName } from '$lib/config/admin';
   import { logDebug, logError } from '$lib/utils/secureLogger';
+  import { parseAIMessageContent } from '$lib/utils/markdownParser';
   import AdminLayout from '$lib/components/admin/AdminLayout.svelte';
   import type { ConversationDetail } from '$lib/types/conversations';
 
@@ -169,7 +170,7 @@
                 </div>
                 <div class="prose prose-sm max-w-none">
                   {#if parsedMessage.role === 'ai' || parsedMessage.role === 'assistant'}
-                    <div class="whitespace-pre-wrap">{parsedMessage.content}</div>
+                    <div class="whitespace-pre-wrap">{@html parseAIMessageContent(parsedMessage)}</div>
                   {:else}
                     <div class="whitespace-pre-wrap">{parsedMessage.content}</div>
                   {/if}

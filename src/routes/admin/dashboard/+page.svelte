@@ -5,6 +5,7 @@
   import { logDebug } from '$lib/utils/secureLogger';
   import AdminDashboard from '$lib/components/admin/AdminDashboard.svelte';
   import AdminLayout from '$lib/components/admin/AdminLayout.svelte';
+  import { fade, fly } from 'svelte/transition';
 
   // Check if admin is logged in
   onMount(() => {
@@ -19,10 +20,7 @@
 </script>
 
 <AdminLayout>
-  <h1 class="text-2xl font-bold mb-6">Dashboard Statistics</h1>
-  <p class="text-gray-600 mb-8">
-    View usage statistics for all applications. These statistics are updated in real-time.
-  </p>
-  
-  <AdminDashboard />
+  <div class="max-w-7xl mx-auto" in:fade={{ duration: 300 }}>
+    <AdminDashboard />
+  </div>
 </AdminLayout>

@@ -451,7 +451,7 @@
               </svg>
             </div>
             <div class="ml-3">
-              <p class="text-xs text-gray-500 font-medium">Active Users</p>
+              <p class="text-xs text-gray-500 font-medium">Active Sessions</p>
               <p class="text-xl font-bold text-gray-900">{/* Placeholder value */ 'N/A'}</p>
             </div>
           </div>

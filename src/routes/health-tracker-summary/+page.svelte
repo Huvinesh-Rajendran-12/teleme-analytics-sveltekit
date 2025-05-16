@@ -89,7 +89,7 @@
 
 {#if loading}
   <!-- Basic loading state structure mirroring the React example -->
-  <div class="w-full h-screen flex items-center justify-center bg-gradient-to-br-blue-indigo-purple">
+  <div class="w-full h-screen flex items-center justify-center bg-health-assistant-theme">
     <div class="animate-pulse flex flex-col items-center">
       <!-- You'll need to define CSS for 'h-12 w-12 border-t-4 border-b-4 border-blue-500 rounded-full animate-spin mb-4' -->
       <div class="h-12 w-12 border-t-4 border-b-4 border-blue-500 rounded-full animate-spin mb-4"></div>
@@ -101,7 +101,7 @@
   </div>
 {:else if userId && userName && patientId}
   <!-- Main chat container -->
-  <main class="w-full h-screen overflow-hidden bg-gradient-to-br-blue-indigo-purple">
+  <main class="w-full h-screen overflow-hidden bg-health-assistant-theme">
     <div class="w-full h-full flex flex-col">
       <div class="flex-grow w-full overflow-hidden shadow-md bg-white border border-gray-100">
         <!-- Render the chat component with fetched data -->

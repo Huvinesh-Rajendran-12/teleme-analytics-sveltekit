@@ -132,7 +132,7 @@
   });
 </script>
 
-<main class="w-full h-screen overflow-hidden bg-gradient-to-br-blue-indigo-purple">
+<main class="w-full h-screen overflow-hidden bg-health-assistant-theme">
   <div class="w-full h-full flex flex-col">
     <div class="flex-grow w-full overflow-hidden shadow-md bg-white border border-gray-100">
       {#if loading}

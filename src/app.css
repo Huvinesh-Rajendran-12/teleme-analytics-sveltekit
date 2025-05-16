@@ -8,6 +8,10 @@
     transform: scale(0.8);
     opacity: 0.5;
   }
+
+  .bg-health-assistant-theme {
+    background-color: #01a99c;
+  }
   50% {
     transform: scale(1.2);
     opacity: 1;

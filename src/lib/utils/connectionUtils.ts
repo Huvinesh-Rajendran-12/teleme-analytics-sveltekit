@@ -1,6 +1,6 @@
 export async function checkConnectionStatus(
   endpoint: string,
-  timeout: number = 5000,
+  timeout: number = 5000
 ): Promise<boolean> {
   try {
     const abortController = new AbortController();
@@ -8,13 +8,13 @@ export async function checkConnectionStatus(
 
     try {
       const response = await fetch(endpoint, {
-        method: "HEAD",
+        method: 'GET', // Changed from "HEAD"
         signal: abortController.signal,
-        cache: "no-cache",
+        cache: 'no-cache',
         headers: {
-          "Cache-Control": "no-cache",
-          Pragma: "no-cache",
-        },
+          'Cache-Control': 'no-cache',
+          Pragma: 'no-cache'
+        }
       });
 
       // Check if response status indicates success (e.g., 200-299)
@@ -23,12 +23,11 @@ export async function checkConnectionStatus(
       clearTimeout(timeoutId);
     }
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     // Using console.error as a fallback, replace with your preferred logging if available
-    console.error("Connection check failed:", {
+    console.error('Connection check failed:', {
       error: errorMessage,
-      endpoint,
+      endpoint
     });
     return false;
   }

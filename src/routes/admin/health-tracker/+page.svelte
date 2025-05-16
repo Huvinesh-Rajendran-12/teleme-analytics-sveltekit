@@ -20,7 +20,7 @@
   let retrying = false;
   let connectionIssue = false;
   let showLoadingSkeleton = true;
-  
+
   // Derived state
   $: hasConversations = conversations && conversations.length > 0;
 
@@ -28,45 +28,45 @@
   onMount(async () => {
     const token = getStoredAdminToken();
     logDebug('Admin token present:', Boolean(token));
-    
+
     if (!token) {
       logDebug('No admin token found, redirecting to login');
       goto('/admin/login');
       return;
     }
-    
+
     // Load conversations
     await loadConversations();
-    
+
     // Small delay before removing skeleton to ensure smooth transitions
     setTimeout(() => {
       showLoadingSkeleton = false;
     }, 300);
   });
-  
+
   // Load conversations with error handling and retry logic
   async function loadConversations(attempt = 1) {
     try {
       loading = true;
       error = null;
       connectionIssue = false;
-      
+
       if (attempt > 1) {
         retrying = true;
       }
-      
+
       logDebug('Loading health tracker conversations, page:', currentPage);
-      
+
       // Call the service function with timeout
-      const result = await Promise.race([
+      const result = (await Promise.race([
         fetchHealthTrackerConversations(currentPage, 10),
-        new Promise<null>((_, reject) => 
+        new Promise<null>((_, reject) =>
           setTimeout(() => reject(new Error('Request timeout')), 15000)
         )
-      ]) as any;
-      
+      ])) as any;
+
       logDebug('Fetch result type:', typeof result);
-      
+
       // Process the result based on its structure
       if (Array.isArray(result) && result.length > 0) {
         // If it's an array as expected
@@ -74,7 +74,7 @@
         if (data && typeof data === 'object' && 'conversations' in data) {
           conversations = data.conversations || [];
           totalPages = data.total_pages || 1;
-          
+
           logDebug('Successfully loaded conversations:', conversations.length);
           logDebug('Total pages:', totalPages);
         } else {
@@ -86,7 +86,7 @@
         // If it's a direct object
         conversations = result.conversations || [];
         totalPages = result.total_pages || 1;
-        
+
         logDebug('Successfully loaded conversations from direct object:', conversations.length);
       } else {
         logError('Unexpected result format:', result);
@@ -95,7 +95,7 @@
       }
     } catch (err) {
       logError('Error loading conversations:', err);
-      
+
       // Handle specific error cases
       if (err instanceof Error) {
         if (err.message.includes('timeout') || err.message.includes('network')) {
@@ -107,21 +107,21 @@
       } else {
         error = 'An unexpected error occurred. Please try again.';
       }
-      
+
       // If there was an error and we haven't tried too many times, retry
       if (attempt < 3) {
         logDebug(`Retrying load (attempt ${attempt + 1})...`);
         setTimeout(() => loadConversations(attempt + 1), 1500);
         return;
       }
-      
+
       conversations = [];
     } finally {
       loading = false;
       retrying = false;
     }
   }
-  
+
   // Navigation functions
   function previousPage() {
     if (currentPage > 1 && !loading) {
@@ -129,21 +129,21 @@
       loadConversations();
     }
   }
-  
+
   function nextPage() {
     if (currentPage < totalPages && !loading) {
       currentPage++;
       loadConversations();
     }
   }
-  
+
   function goToPage(page: number) {
     if (page >= 1 && page <= totalPages && page !== currentPage && !loading) {
       currentPage = page;
       loadConversations();
     }
   }
-  
+
   // UI interaction functions
   function toggleConversation(id: string) {
     expanded = {
@@ -151,7 +151,7 @@
       [id]: !expanded[id]
     };
   }
-  
+
   // Utility functions
   function formatDate(dateString: string): string {
     if (!dateString) return 'N/A';
@@ -164,11 +164,11 @@
         hour: '2-digit',
         minute: '2-digit'
       });
-    } catch (e) {
+    } catch {
       return dateString;
     }
   }
-  
+
   function formatRelativeTime(dateString: string): string {
     if (!dateString) return 'N/A';
     try {
@@ -179,7 +179,7 @@
       const diffMinutes = Math.floor(diffSeconds / 60);
       const diffHours = Math.floor(diffMinutes / 60);
       const diffDays = Math.floor(diffHours / 24);
-      
+
       if (diffDays > 30) {
         return formatDate(dateString);
       } else if (diffDays > 0) {
@@ -191,14 +191,14 @@
       } else {
         return 'Just now';
       }
-    } catch (e) {
+    } catch {
       return dateString;
     }
   }
-  
+
   function renderMessageContent(message: any): string {
     if (!message) return '';
-    
+
     try {
       if (message.type === 'ai' || message.type === 'assistant') {
         return parseAIMessageContent(message);
@@ -211,22 +211,22 @@
       return 'Error displaying message';
     }
   }
-  
+
   // Generate pagination numbers
   function getPaginationNumbers(): number[] {
     if (totalPages <= 5) {
       return Array.from({ length: totalPages }, (_, i) => i + 1);
     }
-    
+
     const pages: number[] = [];
-    
+
     // Always show first page
     pages.push(1);
-    
+
     // Middle pages
     let startPage = Math.max(2, currentPage - 1);
     let endPage = Math.min(totalPages - 1, currentPage + 1);
-    
+
     // Ensure at least 3 middle pages if possible
     if (endPage - startPage < 2) {
       if (startPage === 2) {
@@ -235,25 +235,25 @@
         startPage = Math.max(2, endPage - 2);
       }
     }
-    
+
     // Add ellipsis before middle pages if needed
     if (startPage > 2) {
       pages.push(-1); // -1 represents ellipsis
     }
-    
+
     // Add middle pages
     for (let i = startPage; i <= endPage; i++) {
       pages.push(i);
     }
-    
+
     // Add ellipsis after middle pages if needed
     if (endPage < totalPages - 1) {
       pages.push(-2); // -2 represents ellipsis
     }
-    
+
     // Always show last page
     pages.push(totalPages);
-    
+
     return pages;
   }
 </script>
@@ -268,137 +268,224 @@
             class="text-3xl font-bold text-gray-900 flex items-center group"
             in:fly={{ y: -20, duration: 400 }}
           >
-            <div class="mr-3 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0 group-hover:bg-blue-200 transition-colors">
+            <div
+              class="mr-3 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0 group-hover:bg-blue-200 transition-colors"
+            >
               <!-- Health Tracker Icon Placeholder -->
               <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 21.052l-1.405-1.405c-4.072-3.41-6.595-5.64-6.595-8.312 0-2.21 1.79-4 4-4 1.44 0 2.815.78 3.5.975A3.992 3.992 0 0112 7.332c.685.195 2.06.975 3.5 0 2.21 0 4 1.79 4 4 0 2.672-2.523 4.902-6.595 8.312L12 21.052z" />
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 21.052l-1.405-1.405c-4.072-3.41-6.595-5.64-6.595-8.312 0-2.21 1.79-4 4-4 1.44 0 2.815.78 3.5.975A3.992 3.992 0 0112 7.332c.685.195 2.06.975 3.5 0 2.21 0 4 1.79 4 4 0 2.672-2.523 4.902-6.595 8.312L12 21.052z"
+                />
               </svg>
             </div>
             Health Tracker Summary Conversations
           </h1>
           <p class="text-gray-600 mt-2 max-w-3xl">
-            Manage and monitor conversations from the Health Tracker Summary application. View user interactions, conversation details, and progress summaries.
+            Manage and monitor conversations from the Health Tracker Summary application. View user
+            interactions, conversation details, and progress summaries.
           </p>
         </div>
         <div class="mt-4 md:mt-0 flex space-x-2">
           <!-- Refresh button -->
           <button
-        on:click={() => loadConversations()} 
-        disabled={loading}
-        class="inline-flex items-center justify-center rounded-md bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 ease-in-out"
-      >
-        {#if loading}
-          <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          {retrying ? 'Retrying...' : 'Refreshing...'}
-        {:else}
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          Refresh
-        {/if}
-      </button>
+            on:click={() => loadConversations()}
+            disabled={loading}
+            class="inline-flex items-center justify-center rounded-md bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 ease-in-out"
+          >
+            {#if loading}
+              <svg
+                class="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-700"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              {retrying ? 'Retrying...' : 'Refreshing...'}
+            {:else}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-4 w-4 mr-1"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              Refresh
+            {/if}
+          </button>
         </div>
       </div>
     </div>
 
-          <!-- Metric Cards -->
-          <div
-            class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
-            in:fly={{ y: 20, duration: 400, delay: 200 }}
-          >
-            <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-              <div class="h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
-              <div class="p-4">
-                <div class="flex items-center">
-                  <div class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
-                    <!-- Icon placeholder: Document/File -->
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                      <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0111.707 2.293L15.707 6.293A2 2 0 0116 7.707V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd" />
-                    </svg>
-                  </div>
-                  <div class="ml-3">
-                    <p class="text-xs text-gray-500 font-medium">Total Sessions</p>
-                    <p class="text-xl font-bold text-gray-900">{/* Placeholder value */ 'N/A'}</p>
-                  </div>
-                </div>
-              </div>
+    <!-- Metric Cards -->
+    <div
+      class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+      in:fly={{ y: 20, duration: 400, delay: 200 }}
+    >
+      <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+        <div class="h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
+        <div class="p-4">
+          <div class="flex items-center">
+            <div
+              class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0"
+            >
+              <!-- Icon placeholder: Document/File -->
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-4 w-4"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M4 4a2 2 0 012-2h4.586A2 2 0 0111.707 2.293L15.707 6.293A2 2 0 0116 7.707V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z"
+                  clip-rule="evenodd"
+                />
+              </svg>
             </div>
-
-            <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-              <div class="h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
-              <div class="p-4">
-                <div class="flex items-center">
-                  <div class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
-                     <!-- Icon placeholder: Clock -->
-                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                       <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
-                     </svg>
-                  </div>
-                  <div class="ml-3">
-                    <p class="text-xs text-gray-500 font-medium">Avg Session Duration</p>
-                    <p class="text-xl font-bold text-gray-900">{/* Placeholder value */ 'N/A'}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-              <div class="h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
-              <div class="p-4">
-                <div class="flex items-center">
-                  <div class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
-                    <!-- Icon placeholder: Checkmark -->
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                    </svg>
-                  </div>
-                  <div class="ml-3">
-                    <p class="text-xs text-gray-500 font-medium">Completed Plans</p>
-                    <p class="text-xl font-bold text-gray-900">{/* Placeholder value */ 'N/A'}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-              <div class="h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
-              <div class="p-4">
-                <div class="flex items-center">
-                  <div class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
-                     <!-- Icon placeholder: User group -->
-                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                       <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-                     </svg>
-                  </div>
-                  <div class="ml-3">
-                    <p class="text-xs text-gray-500 font-medium">Active Users</p>
-                    <p class="text-xl font-bold text-gray-900">{/* Placeholder value */ 'N/A'}</p>
-                  </div>
-                </div>
-              </div>
+            <div class="ml-3">
+              <p class="text-xs text-gray-500 font-medium">Total Sessions</p>
+              <p class="text-xl font-bold text-gray-900">{/* Placeholder value */ 'N/A'}</p>
             </div>
           </div>
+        </div>
+      </div>
 
-          <!-- Error message -->
+      <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+        <div class="h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
+        <div class="p-4">
+          <div class="flex items-center">
+            <div
+              class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0"
+            >
+              <!-- Icon placeholder: Clock -->
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-4 w-4"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </div>
+            <div class="ml-3">
+              <p class="text-xs text-gray-500 font-medium">Avg Session Duration</p>
+              <p class="text-xl font-bold text-gray-900">{/* Placeholder value */ 'N/A'}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+        <div class="h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
+        <div class="p-4">
+          <div class="flex items-center">
+            <div
+              class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0"
+            >
+              <!-- Icon placeholder: Checkmark -->
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-4 w-4"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </div>
+            <div class="ml-3">
+              <p class="text-xs text-gray-500 font-medium">Completed Plans</p>
+              <p class="text-xl font-bold text-gray-900">{/* Placeholder value */ 'N/A'}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+        <div class="h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
+        <div class="p-4">
+          <div class="flex items-center">
+            <div
+              class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0"
+            >
+              <!-- Icon placeholder: User group -->
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-4 w-4"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"
+                />
+              </svg>
+            </div>
+            <div class="ml-3">
+              <p class="text-xs text-gray-500 font-medium">Active Users</p>
+              <p class="text-xl font-bold text-gray-900">{/* Placeholder value */ 'N/A'}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Error message -->
     {#if error}
-      <div 
+      <div
         class="mb-6 rounded-md bg-red-50 p-4 text-sm text-red-700 shadow-sm"
         in:fly={{ y: -10, duration: 200 }}
         out:fade={{ duration: 150 }}
       >
         <div class="flex">
-          <svg class="h-5 w-5 text-red-400 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          <svg
+            class="h-5 w-5 text-red-400 mr-2"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z"
+              clip-rule="evenodd"
+            />
           </svg>
           <div>
             <p>{error}</p>
             {#if connectionIssue}
               <div class="mt-2">
-                <button 
-                  on:click={() => loadConversations()} 
+                <button
+                  on:click={() => loadConversations()}
                   class="inline-flex rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100"
                 >
                   Try Again
@@ -409,15 +496,17 @@
         </div>
       </div>
     {/if}
-    
+
     <!-- Loading state -->
     {#if loading && showLoadingSkeleton}
       <div in:fade={{ duration: 150 }}>
         <!-- Loading skeleton -->
         <div class="space-y-4">
           {#each Array(5) as _, i}
-            <div class="border border-gray-200 rounded-lg overflow-hidden shadow-sm bg-white" 
-                 in:fade={{ duration: 200, delay: i * 50 }}>
+            <div
+              class="border border-gray-200 rounded-lg overflow-hidden shadow-sm bg-white"
+              in:fade={{ duration: 200, delay: i * 50 }}
+            >
               <div class="flex justify-between items-center p-4">
                 <div class="w-1/3">
                   <div class="h-5 bg-gray-200 rounded animate-pulse"></div>
@@ -434,22 +523,22 @@
       </div>
     {:else if !hasConversations && !loading}
       <!-- Empty state -->
-      <div 
+      <div
         class="rounded-lg bg-white border border-gray-200 shadow-sm py-12 px-6"
         in:fade={{ duration: 300 }}
       >
         <div class="text-center">
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            class="mx-auto h-16 w-16 text-gray-300" 
-            fill="none" 
-            viewBox="0 0 24 24" 
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="mx-auto h-16 w-16 text-gray-300"
+            fill="none"
+            viewBox="0 0 24 24"
             stroke="currentColor"
           >
-            <path 
-              stroke-linecap="round" 
-              stroke-linejoin="round" 
-              stroke-width="1.5" 
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
               d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
             />
           </svg>
@@ -458,12 +547,23 @@
             There are no Health Tracker Summary conversations to display at this time.
           </p>
           <div class="mt-6">
-            <button 
-              on:click={() => loadConversations()} 
+            <button
+              on:click={() => loadConversations()}
               class="inline-flex items-center rounded-md bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-4 w-4 mr-1"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
               </svg>
               Refresh
             </button>
@@ -485,8 +585,19 @@
                   <span>User: {conversation.user_name}</span>
                 </h3>
                 <p class="text-xs text-gray-500 mt-1 flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-3 w-3 mr-1"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                   <span title={formatDate(conversation.last_activity)}>
                     {formatRelativeTime(conversation.last_activity)}
@@ -499,16 +610,14 @@
                 </span>
                 <div class="flex space-x-3">
                   <button
-                    on:click={() => goto(`/admin/conversation/${conversation.session_id}?application=${APPLICATION_TYPES.ANALYTICS_CHATBOT}`)}
+                    on:click={() =>
+                      goto(
+                        `/admin/conversation/${conversation.session_id}?application=${APPLICATION_TYPES.ANALYTICS_CHATBOT}`
+                      )}
                     class="text-blue-600 hover:text-blue-800 rounded-full p-1.5 hover:bg-blue-50 transition-colors duration-150"
                     title="View detailed conversation"
                   >
-                    <svg
-                      class="h-5 w-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path
                         stroke-linecap="round"
                         stroke-linejoin="round"
@@ -529,7 +638,9 @@
                     title="Toggle preview"
                   >
                     <svg
-                      class="h-5 w-5 transform {expanded[conversation.session_id] ? 'rotate-180' : ''} transition-transform"
+                      class="h-5 w-5 transform {expanded[conversation.session_id]
+                        ? 'rotate-180'
+                        : ''} transition-transform"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -545,7 +656,7 @@
                 </div>
               </div>
             </div>
-            
+
             <!-- Conversation preview -->
             {#if expanded[conversation.session_id]}
               <div
@@ -558,9 +669,14 @@
                       {#if msgItem}
                         {#if msgItem.message}
                           {#if msgItem.message.type === 'ai' || msgItem.message.type === 'assistant'}
-                            <div class="rounded-xl bg-blue-50 border border-blue-100 p-3" in:fade={{ duration: 200, delay: index * 40 }}>
+                            <div
+                              class="rounded-xl bg-blue-50 border border-blue-100 p-3"
+                              in:fade={{ duration: 200, delay: index * 40 }}
+                            >
                               <div class="flex items-start">
-                                <div class="h-6 w-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold mr-2 flex-shrink-0">
+                                <div
+                                  class="h-6 w-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold mr-2 flex-shrink-0"
+                                >
                                   AI
                                 </div>
                                 <div class="prose prose-sm max-w-none">
@@ -569,9 +685,14 @@
                               </div>
                             </div>
                           {:else}
-                            <div class="rounded-xl bg-amber-50 border border-amber-100 p-3" in:fade={{ duration: 200, delay: index * 40 }}>
+                            <div
+                              class="rounded-xl bg-amber-50 border border-amber-100 p-3"
+                              in:fade={{ duration: 200, delay: index * 40 }}
+                            >
                               <div class="flex items-start">
-                                <div class="h-6 w-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold mr-2 flex-shrink-0">
+                                <div
+                                  class="h-6 w-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold mr-2 flex-shrink-0"
+                                >
                                   U
                                 </div>
                                 <div>
@@ -581,14 +702,17 @@
                             </div>
                           {/if}
                         {:else}
-                          <div class="rounded-xl bg-gray-100 border border-gray-200 p-3" in:fade={{ duration: 200, delay: index * 40 }}>
+                          <div
+                            class="rounded-xl bg-gray-100 border border-gray-200 p-3"
+                            in:fade={{ duration: 200, delay: index * 40 }}
+                          >
                             <div class="flex items-start">
-                              <div class="h-6 w-6 rounded-full bg-gray-500 text-white flex items-center justify-center text-xs font-bold mr-2 flex-shrink-0">
+                              <div
+                                class="h-6 w-6 rounded-full bg-gray-500 text-white flex items-center justify-center text-xs font-bold mr-2 flex-shrink-0"
+                              >
                                 ?
                               </div>
-                              <div>
-                                Invalid message format
-                              </div>
+                              <div>Invalid message format</div>
                             </div>
                           </div>
                         {/if}
@@ -605,7 +729,7 @@
           </div>
         {/each}
       </div>
-      
+
       <!-- Pagination -->
       {#if totalPages > 1}
         <div class="mt-8 flex justify-center">
@@ -617,8 +741,18 @@
               class="relative inline-flex items-center px-3 py-2 rounded-l-xl border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <span class="sr-only">Previous</span>
-              <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+              <svg
+                class="h-5 w-5"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                  clip-rule="evenodd"
+                />
               </svg>
             </button>
 
@@ -626,13 +760,18 @@
             {#each getPaginationNumbers() as page}
               {#if page === -1 || page === -2}
                 <!-- Ellipsis -->
-                <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                <span
+                  class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700"
+                >
                   ...
                 </span>
               {:else}
                 <button
                   on:click={() => goToPage(page)}
-                  class="relative inline-flex items-center px-4 py-2 border border-gray-300 {page === currentPage ? 'bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 border-blue-200 z-10 font-medium' : 'bg-white text-gray-500 hover:bg-gray-50'} text-sm"
+                  class="relative inline-flex items-center px-4 py-2 border border-gray-300 {page ===
+                  currentPage
+                    ? 'bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 border-blue-200 z-10 font-medium'
+                    : 'bg-white text-gray-500 hover:bg-gray-50'} text-sm"
                 >
                   {page}
                 </button>
@@ -646,8 +785,18 @@
               class="relative inline-flex items-center px-3 py-2 rounded-r-xl border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <span class="sr-only">Next</span>
-              <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+              <svg
+                class="h-5 w-5"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                  clip-rule="evenodd"
+                />
               </svg>
             </button>
           </nav>

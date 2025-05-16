@@ -1,4 +1,5 @@
-<script lang="ts">import { onMount, onDestroy, tick } from 'svelte';
+<script lang="ts">
+  import { onMount, onDestroy, tick } from 'svelte';
   import { v7 } from 'uuid';
   import ChatMessage from './ChatMessage.svelte';
   import OptionsButtons from './OptionsButtons.svelte';
@@ -16,10 +17,10 @@
   let chatState: ChatState = {
     messages: [],
     loading: false,
-    stage: "welcome",
+    stage: 'welcome'
   };
   let isConnected = true;
-  let durationInput = "12";
+  let durationInput = '12';
   let isScrolledAway = false;
   let durationError: string | null = null;
   // chatInputError variable removed as it was unused
@@ -37,7 +38,7 @@
   // Scroll to bottom function
   function scrollToBottom() {
     if (chatEndRef) {
-      chatEndRef.scrollIntoView({ behavior: "smooth" });
+      chatEndRef.scrollIntoView({ behavior: 'smooth' });
       isScrolledAway = false;
     }
   }
@@ -46,53 +47,54 @@
     lastActivity = Date.now();
   }
 
-  function addMessage(role: "user" | "assistant", content: string) {
-    if (content === "[object Object]") {
-      content = "Sorry, I couldn't process that request due to an unexpected response. Please try again.";
+  function addMessage(role: 'user' | 'assistant', content: string) {
+    if (content === '[object Object]') {
+      content =
+        "Sorry, I couldn't process that request due to an unexpected response. Please try again.";
     }
     const newMessage: Message = {
       id: v7(),
       role,
-      content,
+      content
     };
     chatState.messages = [...chatState.messages, newMessage];
     recordActivity();
   }
 
   function startConversation() {
-    if (chatState.stage === "welcome" && chatState.messages.length > 0) {
+    if (chatState.stage === 'welcome' && chatState.messages.length > 0) {
       chatState = {
         messages: [],
         loading: false,
-        stage: "initial",
+        stage: 'initial'
       };
       onRestartConversation();
 
       setTimeout(() => {
         addMessage(
-          "assistant",
-          "Welcome to the Teleme Analytics Assistant. How can I help you with your data analytics today?",
+          'assistant',
+          'Welcome to the Teleme Analytics Assistant. How can I help you with your data analytics today?'
         );
       }, 0);
     } else {
       addMessage(
-        "assistant",
-        "Welcome to the Teleme Analytics Assistant. How can I help you with your data analytics today?",
+        'assistant',
+        'Welcome to the Teleme Analytics Assistant. How can I help you with your data analytics today?'
       );
-      chatState.stage = "initial";
+      chatState.stage = 'initial';
     }
   }
 
   // Function to end conversation due to inactivity
   function endConversationDueToInactivity() {
     addMessage(
-      "assistant",
-      "The conversation has been automatically ended due to inactivity. Thank you for using Teleme Analytics Assistant.",
+      'assistant',
+      'The conversation has been automatically ended due to inactivity. Thank you for using Teleme Analytics Assistant.'
     );
     chatState = {
       ...chatState,
-      stage: "welcome",
-      loading: false,
+      stage: 'welcome',
+      loading: false
     };
 
     if (inactivityTimerRef) {
@@ -101,22 +103,17 @@
   }
 
   function handleInitialOption(buttonId: string) {
-    const button = menuConfig.menuButtons.main.find(
-      (b) => b.id === buttonId,
-    );
+    const button = menuConfig.menuButtons.main.find((b) => b.id === buttonId);
     if (!button) return;
 
     chatState = {
       ...chatState,
-      stage: "asking_duration",
-      selectedOption: buttonId,
+      stage: 'asking_duration',
+      selectedOption: buttonId
     };
 
-    addMessage("user", button.label);
-    addMessage(
-      "assistant",
-      "Please select the duration for analysis:",
-    );
+    addMessage('user', button.label);
+    addMessage('assistant', 'Please select the duration for analysis:');
   }
 
   async function handleDurationSubmit() {
@@ -124,13 +121,8 @@
     const duration = parseInt(durationInput, 10);
 
     // Validate input
-    if (
-      isNaN(duration) ||
-      !Number.isInteger(duration) ||
-      duration < 1 ||
-      duration > 60
-    ) {
-      durationError = "Please enter a valid whole number between 1 and 60.";
+    if (isNaN(duration) || !Number.isInteger(duration) || duration < 1 || duration > 60) {
+      durationError = 'Please enter a valid whole number between 1 and 60.';
       // Keep loading false if validation fails
       chatState.loading = false;
       return; // Stop execution if validation fails
@@ -138,34 +130,34 @@
 
     chatState.loading = true;
 
-    const option = chatState.selectedOption || "summarize all data";
-    addMessage("user", `Duration: ${duration} months`); // Use validated duration for display
-    console.debug("Selected option", {
-      option: option.toLowerCase(),
+    const option = chatState.selectedOption || 'summarize all data';
+    addMessage('user', `Duration: ${duration} months`); // Use validated duration for display
+    console.debug('Selected option', {
+      option: option.toLowerCase()
     });
 
     try {
-      let action: string = "";
-      let action_message: string = "";
-      if (option.toLowerCase() === "summarize") {
-        action = "summarize";
+      let action: string = '';
+      let action_message: string = '';
+      if (option.toLowerCase() === 'summarize') {
+        action = 'summarize';
         action_message = `Summarize All Data for ${durationInput} months`;
-      } else if (option.toLowerCase() === "diagnoses") {
-        action = "diagnoses";
+      } else if (option.toLowerCase() === 'diagnoses') {
+        action = 'diagnoses';
         action_message = `Top 20 Diagnoses for ${durationInput} months`;
-      } else if (option.toLowerCase() === "medicines") {
-        action = "medicines";
+      } else if (option.toLowerCase() === 'medicines') {
+        action = 'medicines';
         action_message = `Top 10 Medicines for ${durationInput} months`;
       }
 
-      console.debug("Action selected", { action });
-      console.debug("Action message prepared", { action_message });
+      console.debug('Action selected', { action });
+      console.debug('Action message prepared', { action_message });
       handleAnalyticsQuery(action_message);
     } catch (error) {
-      console.error("Error handling option", error);
+      console.error('Error handling option', error);
       addMessage(
-        "assistant",
-        "An error occurred while processing your request. Please try again. If the problem persists, contact support.",
+        'assistant',
+        'An error occurred while processing your request. Please try again. If the problem persists, contact support.'
       );
       chatState.loading = false;
     }
@@ -175,8 +167,8 @@
     // Check connection status before attempting the API call
     if (!isConnected) {
       addMessage(
-        "assistant",
-        "Cannot connect to the service. Please check your network connection and try again later."
+        'assistant',
+        'Cannot connect to the service. Please check your network connection and try again later.'
       );
       chatState.loading = false; // Ensure loading is off
       return; // Stop execution if not connected
@@ -187,96 +179,74 @@
     try {
       // Verify auth token first
       if (!params?.auth_token) {
-        throw new Error("Authentication token is required");
+        throw new Error('Authentication token is required');
       }
 
       // Verify required params after auth
-      if (
-        !params.sessionId ||
-        !params.centre_id ||
-        !params.centre_name
-      ) {
-        throw new Error(
-          "Session ID, Centre ID, and Centre name are required",
-        );
+      if (!params.sessionId || !params.centre_id || !params.centre_name) {
+        throw new Error('Session ID, Centre ID, and Centre name are required');
       }
 
       const result = await n8nService.callWithParams(
         params.sessionId,
         params.centre_id,
         params.centre_name,
-        typeof durationInput === "string"
-          ? parseInt(durationInput, 10)
-          : durationInput,
+        typeof durationInput === 'string' ? parseInt(durationInput, 10) : durationInput,
         message,
-        "analytics_chatbot",
-        params.is_ngo,
+        'analytics_chatbot',
+        params.is_ngo
       );
 
       if (!result.success) {
-        console.error("Error from n8n service", {
-          error: result.error,
+        console.error('Error from n8n service', {
+          error: result.error
         });
         addMessage(
-          "assistant",
-          `Sorry, there was an error: ${result.error || "An unknown error occurred. Please try again later."}`,
+          'assistant',
+          `Sorry, there was an error: ${result.error || 'An unknown error occurred. Please try again later.'}`
         );
       } else if (result.data) {
         // Check if result.data is a string, otherwise use an error message
         const messageContent =
-          typeof result.data === "string"
+          typeof result.data === 'string'
             ? result.data
-            : "Sorry, I received an unexpected response format. Please try again.";
-        addMessage("assistant", messageContent);
+            : 'Sorry, I received an unexpected response format. Please try again.';
+        addMessage('assistant', messageContent);
       } else {
-        addMessage(
-          "assistant",
-          "No data received from the service.",
-        );
+        addMessage('assistant', 'No data received from the service.');
       }
 
       chatState = {
         ...chatState,
         loading: false,
-        stage: "summary",
+        stage: 'summary'
       };
     } catch (error) {
-      console.error("Error handling analytics query", error);
+      console.error('Error handling analytics query', error);
       addMessage(
-        "assistant",
-        "Sorry, there was an error processing your request. Please try again.",
+        'assistant',
+        'Sorry, there was an error processing your request. Please try again.'
       );
       chatState.loading = false;
     }
   }
 
   function handlePostResponseOption(buttonId: string) {
-    const button = menuConfig.menuButtons.conversation.find(
-      (b) => b.id === buttonId,
-    );
+    const button = menuConfig.menuButtons.conversation.find((b) => b.id === buttonId);
     if (!button) return;
 
     switch (buttonId) {
-      case "back":
-        chatState.stage = "initial";
-        addMessage(
-          "assistant",
-          "What would you like to do with your data analytics?",
-        );
+      case 'back':
+        chatState.stage = 'initial';
+        addMessage('assistant', 'What would you like to do with your data analytics?');
         break;
-      case "end":
-        addMessage(
-          "assistant",
-          "Thank you for using our service. The conversation has ended.",
-        );
-        chatState.stage = "welcome";
+      case 'end':
+        addMessage('assistant', 'Thank you for using our service. The conversation has ended.');
+        chatState.stage = 'welcome';
         break;
-      case "question":
-        chatState.stage = "question";
-        addMessage(
-          "assistant",
-          "What question would you like to ask?",
-        );
+      case 'question':
+        chatState.stage = 'question';
+        addMessage('assistant', 'What question would you like to ask?');
         break;
     }
   }
@@ -296,8 +266,8 @@
       /(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|TRUNCATE|UNION|JOIN|--|\/\*|<\/?script>|<\/?iframe>|javascript:|eval\s*\(|function\s*\(|\=>|\{|\})/i;
 
     if (disallowedPattern.test(question)) {
-       console.warn(`Question contains disallowed pattern: ${question}`);
-       // Handle the error appropriately, e.g., show a notification
+      console.warn(`Question contains disallowed pattern: ${question}`);
+      // Handle the error appropriately, e.g., show a notification
       chatState.loading = false; // Ensure loading is off
       return; // Stop execution if validation fails
     }
@@ -305,76 +275,70 @@
     // Check connection status before attempting the API call
     if (!isConnected) {
       addMessage(
-        "assistant",
-        "Cannot connect to the service. Please check your network connection and try again later."
+        'assistant',
+        'Cannot connect to the service. Please check your network connection and try again later.'
       );
       chatState.loading = false; // Ensure loading is off
       return; // Stop execution if not connected
     }
 
     chatState.loading = true;
-    addMessage("user", question);
+    addMessage('user', question);
 
     // Wait for the DOM to update after adding the user message, then scroll
     await tick();
     scrollToBottom();
 
-
     try {
       // Verify auth token first
       if (!params?.auth_token) {
-        throw new Error("Authentication token is required");
+        throw new Error('Authentication token is required');
       }
 
       // Verify required params after auth
       if (!params.sessionId || !params.centre_id) {
-        throw new Error("Session ID and Centre ID are required");
+        throw new Error('Session ID and Centre ID are required');
       }
 
       const result = await n8nService.callWithParams(
         params.sessionId,
         params.centre_id,
         params.centre_name,
-        typeof durationInput === "string"
-          ? parseInt(durationInput, 10)
-          : durationInput,
+        typeof durationInput === 'string' ? parseInt(durationInput, 10) : durationInput,
         question,
-        "analytics_chatbot",
-        params.is_ngo,
+        'analytics_chatbot',
+        params.is_ngo
       );
 
       if (!result.success) {
-        console.error("Error from n8n service", {
-          error: result.error,
+        console.error('Error from n8n service', {
+          error: result.error
         });
         addMessage(
-          "assistant",
-          `Sorry, there was an error: ${result.error || "Unknown error occurred"}`,
+          'assistant',
+          `Sorry, there was an error: ${result.error || 'Unknown error occurred'}`
         );
       } else if (result.data) {
         // Check if result.data is a string, otherwise use an error message
         const messageContent =
-          typeof result.data === "string"
+          typeof result.data === 'string'
             ? result.data
-            : "Sorry, I encountered an error processing that request. Please try again.";
-        addMessage("assistant", messageContent);
+            : 'Sorry, I encountered an error processing that request. Please try again.';
+        addMessage('assistant', messageContent);
       } else {
-        addMessage(
-          "assistant",
-          "No data received from the service.",
-        );
+        addMessage('assistant', 'No data received from the service.');
       }
 
       chatState = {
         ...chatState,
         loading: false,
-        stage: "summary",
+        stage: 'summary'
       };
     } catch (error) {
-      console.error("Error sending question", error);
+      console.error('Error sending question', error);
       addMessage(
-        "assistant",
-        "An error occurred while processing your question. Please try again. If the problem persists, contact support.",
+        'assistant',
+        'An error occurred while processing your question. Please try again. If the problem persists, contact support.'
       );
       chatState.loading = false;
     }
@@ -391,27 +355,28 @@
 
     // Add scroll event listener to track scroll position
     if (chatContainer) {
-       handleScroll = () => { // Assign function to the variable
+      handleScroll = () => {
+        // Assign function to the variable
         const { scrollTop, scrollHeight, clientHeight } = chatContainer;
         const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
         isScrolledAway = !isAtBottom;
       };
 
-      chatContainer.addEventListener("scroll", handleScroll);
+      chatContainer.addEventListener('scroll', handleScroll);
     }
 
     // Log when embed parameters change
     if (params) {
-      console.debug("ChatContainer received embed params");
+      console.debug('ChatContainer received embed params');
       // Avoid logging sensitive params directly
     }
 
     // Use the actual N8N API endpoint or configure via an environment variable
     // This should ideally point to a lightweight, always-on endpoint of your backend/service
-    const n8nEndpoint = import.meta.env.VITE_N8N_API_URL || '/api/chat'; // Replace with actual endpoint if different
+    const n8nEndpoint = import.meta.env.VITE_N8N_ANALYTICS_WEBHOOK_URL || ''; // Replace with actual endpoint if different
 
     // Check connection status
-    checkConnectionStatus(n8nEndpoint, 5000).then(online => {
+    checkConnectionStatus(n8nEndpoint, 5000).then((online) => {
       isConnected = online;
       if (!online) {
         console.warn('Initial connection check failed. Service may be unreachable.');
@@ -426,27 +391,28 @@
       const TIMEOUT_MINUTES = Number(import.meta.env.VITE_ANALYTICS_CHATBOT_TIMEOUT) || 5; // Default to 5 minutes
       const inactivityLimit = TIMEOUT_MINUTES * 60 * 1000;
 
-      if (inactiveTime >= inactivityLimit && chatState.stage !== "welcome") {
+      if (inactiveTime >= inactivityLimit && chatState.stage !== 'welcome') {
         endConversationDueToInactivity();
       }
     }, 30000); // Check every 30 seconds
 
     // Global event listeners for activity tracking
     const trackActivity = () => recordActivity();
-    document.addEventListener("mousedown", trackActivity);
-    document.addEventListener("keypress", trackActivity);
-    document.addEventListener("touchstart", trackActivity);
+    document.addEventListener('mousedown', trackActivity);
+    document.addEventListener('keypress', trackActivity);
+    document.addEventListener('touchstart', trackActivity);
 
     return () => {
       if (inactivityTimerRef) {
         clearInterval(inactivityTimerRef);
       }
-      document.removeEventListener("mousedown", trackActivity);
-      document.removeEventListener("keypress", trackActivity);
-      document.removeEventListener("touchstart", trackActivity);
+      document.removeEventListener('mousedown', trackActivity);
+      document.removeEventListener('keypress', trackActivity);
+      document.removeEventListener('touchstart', trackActivity);
 
-      if (chatContainer && handleScroll) { // Check if handleScroll was assigned
-        chatContainer.removeEventListener("scroll", handleScroll); // Use the variable
+      if (chatContainer && handleScroll) {
+        // Check if handleScroll was assigned
+        chatContainer.removeEventListener('scroll', handleScroll); // Use the variable
       }
     };
   });
@@ -455,7 +421,8 @@
     if (inactivityTimerRef) {
       clearInterval(inactivityTimerRef);
     }
-  });</script>
+  });
+</script>
 
 <div class="flex flex-col h-full w-full" data-testid="chat-container">
   <div
@@ -468,7 +435,9 @@
         <div class="flex flex-col items-center justify-center py-20 w-full">
           <div class="flex flex-col items-center">
             <div class="rounded-full bg-gradient-to-br-blue-teal shadow mb-8">
-              <div class="logo-circle flex items-center justify-center text-white text-5xl font-bold">
+              <div
+                class="logo-circle flex items-center justify-center text-white text-5xl font-bold"
+              >
                 T
               </div>
             </div>
@@ -487,9 +456,7 @@
               >
                 <div class="flex items-center justify-center">
                   <span class="text-xl">🚀</span>
-                  <span class="text-base font-medium mx-2">
-                    Start New Conversation
-                  </span>
+                  <span class="text-base font-medium mx-2"> Start New Conversation </span>
                 </div>
               </button>
             </div>
@@ -499,11 +466,9 @@
 
       {#each chatState.messages as msg (msg.id)}
         <div class="mb-8">
-          <div
-            class="text-sm mb-1 {msg.role === 'user' ? 'text-right' : 'text-left'}"
-          >
+          <div class="text-sm mb-1 {msg.role === 'user' ? 'text-right' : 'text-left'}">
             <span class="text-gray-500 font-medium">
-              {msg.role === "user" ? "You" : "Assistant"}
+              {msg.role === 'user' ? 'You' : 'Assistant'}
             </span>
           </div>
           <ChatMessage message={msg} />
@@ -511,15 +476,15 @@
       {/each}
 
       {#if !chatState.loading}
-        {#if chatState.stage !== "welcome" && chatState.stage !== "question"}
-          {#if chatState.stage === "initial"}
+        {#if chatState.stage !== 'welcome' && chatState.stage !== 'question'}
+          {#if chatState.stage === 'initial'}
             <div class="mt-4">
               <OptionsButtons
-                       buttons={menuConfig.menuButtons.main as OptionsButtonType[]}
-                       onSelect={handleInitialOption}
-                     />
+                buttons={menuConfig.menuButtons.main as OptionsButtonType[]}
+                onSelect={handleInitialOption}
+              />
             </div>
-          {:else if chatState.stage === "asking_duration"}
+          {:else if chatState.stage === 'asking_duration'}
             <div class="mt-4">
               <div class="flex items-center justify-center">
                 <div class="relative mr-3">
@@ -528,7 +493,9 @@
                     bind:value={durationInput}
                     min="1"
                     max="60"
-                    class="input-number border rounded-lg px-4 py-2 w-24 text-center font-medium {durationError ? 'border-red-500' : 'border-gray-300'}"
+                    class="input-number border rounded-lg px-4 py-2 w-24 text-center font-medium {durationError
+                      ? 'border-red-500'
+                      : 'border-gray-300'}"
                     placeholder="12"
                   />
                 </div>
@@ -538,9 +505,7 @@
                 >
                   <div class="flex items-center justify-center">
                     <span class="text-base">✅</span>
-                    <span class="font-medium text-sm mx-1">
-                      Submit
-                    </span>
+                    <span class="font-medium text-sm mx-1"> Submit </span>
                   </div>
                 </button>
               </div>
@@ -551,16 +516,16 @@
               {/if}
             </div>
           {:else}
-           <div class="mt-4">
-            <OptionsButtons
-              buttons={menuConfig.menuButtons.conversation as OptionsButtonType[]}
-              onSelect={handlePostResponseOption}
-            />
+            <div class="mt-4">
+              <OptionsButtons
+                buttons={menuConfig.menuButtons.conversation as OptionsButtonType[]}
+                onSelect={handlePostResponseOption}
+              />
             </div>
           {/if}
         {/if}
 
-        {#if chatState.stage === "welcome" && chatState.messages.length > 0}
+        {#if chatState.stage === 'welcome' && chatState.messages.length > 0}
           <div class="flex justify-center mt-6">
             <button
               on:click={startConversation}
@@ -595,26 +560,26 @@
           class="fixed bottom-20 right-6 bg-gradient-to-br from-blue-500 to-teal-400 text-white p-3 rounded-full shadow-lg transition-all duration-300 hover:shadow-xl scroll-to-bottom-button"
           aria-label="Scroll to bottom"
         >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M19 14l-7 7m0 0l-7-7m7 7V3"
-              />
-            </svg>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M19 14l-7 7m0 0l-7-7m7 7V3"
+            />
+          </svg>
         </button>
       {/if}
     </div>
   </div>
 
-  {#if chatState.stage === "question"}
+  {#if chatState.stage === 'question'}
     <div class="w-full border-t border-gray-200 bg-white shadow-md">
       <div class="px-4 md:px-8 lg:px-12 py-3 w-full">
         <ChatInput

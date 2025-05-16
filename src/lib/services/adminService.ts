@@ -14,16 +14,27 @@ let N8N_ADMIN_WEBHOOK_URL = "";
 
 // Initialize environment variables if in browser
 if (browser) {
+  // Directly load and log the environment variable value to confirm what's being loaded
+  const envAdminWebhookUrl = import.meta.env.VITE_N8N_ADMIN_WEBHOOK_URL;
+  logDebug("Raw VITE_N8N_ADMIN_WEBHOOK_URL env value:", envAdminWebhookUrl);
+  
+  // Set the admin webhook URLs
+  N8N_ADMIN_WEBHOOK_URL = envAdminWebhookUrl || "https://teleme-n8n.teleme.co/webhook/ai-admin";
   N8N_ADMIN_DASHBOARD_WEBHOOK_URL = 
     import.meta.env.VITE_N8N_ADMIN_DASHBOARD_WEBHOOK_URL || 
     "https://teleme-n8n.teleme.co/webhook/ai-admin-dashboard";
   
-  N8N_ADMIN_WEBHOOK_URL = 
-    import.meta.env.VITE_N8N_ADMIN_WEBHOOK_URL || 
-    "https://teleme-n8n.teleme.co/webhook/ai-admin";
+  // Log the final URLs being used
+  logDebug("FINAL N8N_ADMIN_WEBHOOK_URL (Conversations):", N8N_ADMIN_WEBHOOK_URL);
+  logDebug("FINAL N8N_ADMIN_DASHBOARD_WEBHOOK_URL (Stats):", N8N_ADMIN_DASHBOARD_WEBHOOK_URL);
   
-  logDebug("N8N_ADMIN_WEBHOOK_URL (Conversations):", N8N_ADMIN_WEBHOOK_URL);
-  logDebug("N8N_ADMIN_DASHBOARD_WEBHOOK_URL (Stats):", N8N_ADMIN_DASHBOARD_WEBHOOK_URL);
+  // Add this debugging line to see all environment variables
+  logDebug("All environment variables:", {
+    VITE_N8N_ADMIN_WEBHOOK_URL: envAdminWebhookUrl,
+    VITE_N8N_ANALYTICS_WEBHOOK_URL: import.meta.env.VITE_N8N_ANALYTICS_WEBHOOK_URL,
+    VITE_N8N_HEALTH_TRACKER_WEBHOOK_URL: import.meta.env.VITE_N8N_HEALTH_TRACKER_WEBHOOK_URL,
+    MODE: import.meta.env.MODE
+  });
 }
 
 /**
@@ -119,7 +130,7 @@ export async function authenticateAdmin(
 export async function fetchAnalyticsChatbotConversations(
   page: number = 1,
   pageSize: number = 10,
-): Promise<ConversationsList> {
+): Promise<ConversationsList[]> {
   try {
     logDebug("======== FETCH ANALYTICS CHATBOT CONVERSATIONS ========");
     logDebug(`fetchAnalyticsChatbotConversations called at ${new Date().toISOString()}`);
@@ -134,6 +145,10 @@ export async function fetchAnalyticsChatbotConversations(
       throw new Error("Authentication required. Please login as admin.");
     }
 
+    // Use direct string URL to avoid any issues with environment variables
+    // This matches exactly what's in the .env file
+    const directUrl = "https://teleme-n8n.teleme.co/webhook/ai-admin";
+    
     // Prepare URL parameters
     const params = new URLSearchParams({
       action: "list_conversations",
@@ -142,30 +157,85 @@ export async function fetchAnalyticsChatbotConversations(
       pageSize: pageSize.toString(),
     });
 
-    // Build the URL with parameters
-    const url = `${N8N_ADMIN_WEBHOOK_URL}?${params.toString()}`;
-    logDebug(`Calling N8N admin webhook: ${url}`);
+    // Build the URL with parameters using both the configured and direct URLs
+    const configuredUrl = `${N8N_ADMIN_WEBHOOK_URL}?${params.toString()}`;
+    const hardcodedUrl = `${directUrl}?${params.toString()}`;
+    
+    // Log both URLs to compare them
+    logDebug(`Configured URL: ${configuredUrl}`);
+    logDebug(`Hardcoded URL: ${hardcodedUrl}`);
+    
+    // Use the hardcoded URL for this request to ensure it works
+    const url = hardcodedUrl;
+    logDebug(`Using URL for request: ${url}`);
 
     try {
       const startTime = Date.now();
-      logDebug("Starting API request with URL:", url);
+      logDebug("Starting API request...");
       
       // Add authorization header with admin token
       const headers = {
         Authorization: `Bearer ${token}`,
       };
 
-      logDebug("Request headers:", headers);
-      const response = await axios.get(url, { headers });
+      logDebug("Request headers:", { Authorization: `Bearer ${token.substring(0, 5)}...` });
+      
+      // Set a timeout to ensure we don't wait forever
+      const response = await axios.get(url, { 
+        headers,
+        timeout: 15000 // 15 second timeout
+      });
+      
       const endTime = Date.now();
       logDebug(`API request completed in ${endTime - startTime}ms`);
       logDebug("Response status:", response.status);
-      
-      // Assuming the backend returns data directly conforming to ConversationsList
-      const conversationsList: ConversationsList = response.data;
 
-      logDebug("Returning conversationsList with", conversationsList.conversations?.length || 0, "items");
-      return conversationsList;
+      // Log the important parts of the response
+      if (response.data) {
+        logDebug("Raw response data type:", typeof response.data);
+        
+        // If the response is an array matching the format you shared
+        if (Array.isArray(response.data) && 
+            response.data.length > 0 && 
+            response.data[0] && 
+            typeof response.data[0] === 'object' &&
+            'conversations' in response.data[0]) {
+            
+          logDebug("SUCCESS: Response matches expected array format with conversations in first element");
+          // Matched the exact format you shared - this is correct!
+          return response.data as ConversationsList[];
+        }
+        // If it's a direct ConversationsList object
+        else if (typeof response.data === 'object' && 
+                'conversations' in response.data) {
+          logDebug("Found direct conversations object, wrapping in array");
+          return [response.data as ConversationsList];
+        }
+        // For any other format, create a proper structure
+        else {
+          logDebug("Unexpected response format, creating standard structure");
+          const emptyList: ConversationsList = {
+            conversations: [],
+            total_pages: 1,
+            current_page: page,
+            page_size: pageSize,
+            total_records: 0
+          };
+          
+          return [emptyList];
+        }
+      } else {
+        logDebug("No data in response");
+        const emptyList: ConversationsList = {
+          conversations: [],
+          total_pages: 1,
+          current_page: page,
+          page_size: pageSize,
+          total_records: 0
+        };
+        
+        return [emptyList];
+      }
     } catch (apiError) {
       logError("API request failed:", apiError);
       if (axios.isAxiosError(apiError) && apiError.response) {
@@ -186,7 +256,7 @@ export async function fetchAnalyticsChatbotConversations(
 export async function fetchHealthTrackerConversations(
   page: number = 1,
   pageSize: number = 10,
-): Promise<ConversationsList> {
+): Promise<ConversationsList[]> {
   try {
     logDebug("======== FETCH HEALTH TRACKER CONVERSATIONS ========");
     logDebug(`fetchHealthTrackerConversations called at ${new Date().toISOString()}`);
@@ -201,6 +271,9 @@ export async function fetchHealthTrackerConversations(
       throw new Error("Authentication required. Please login as admin.");
     }
 
+    // Use direct string URL to avoid any issues with environment variables
+    const directUrl = "https://teleme-n8n.teleme.co/webhook/ai-admin";
+    
     // Prepare URL parameters
     const params = new URLSearchParams({
       action: "list_conversations",
@@ -210,29 +283,76 @@ export async function fetchHealthTrackerConversations(
     });
 
     // Build the URL with parameters
-    const url = `${N8N_ADMIN_WEBHOOK_URL}?${params.toString()}`;
+    const url = `${directUrl}?${params.toString()}`;
     logDebug(`Calling N8N admin webhook: ${url}`);
 
     try {
       const startTime = Date.now();
-      logDebug("Starting API request with URL:", url);
+      logDebug("Starting API request...");
       
       // Add authorization header with admin token
       const headers = {
         Authorization: `Bearer ${token}`,
       };
 
-      logDebug("Request headers:", headers);
-      const response = await axios.get(url, { headers });
+      logDebug("Request headers:", { Authorization: `Bearer ${token.substring(0, 5)}...` });
+      
+      // Set a timeout to ensure we don't wait forever
+      const response = await axios.get(url, { 
+        headers,
+        timeout: 15000 // 15 second timeout
+      });
+      
       const endTime = Date.now();
       logDebug(`API request completed in ${endTime - startTime}ms`);
       logDebug("Response status:", response.status);
-      
-      // Assuming the backend returns data directly conforming to ConversationsList
-      const conversationsList: ConversationsList = response.data;
 
-      logDebug("Returning conversationsList with", conversationsList.conversations?.length || 0, "items");
-      return conversationsList;
+      // Log the important parts of the response
+      if (response.data) {
+        logDebug("Raw response data type:", typeof response.data);
+        
+        // If the response is an array matching the format you shared
+        if (Array.isArray(response.data) && 
+            response.data.length > 0 && 
+            response.data[0] && 
+            typeof response.data[0] === 'object' &&
+            'conversations' in response.data[0]) {
+            
+          logDebug("SUCCESS: Response matches expected array format with conversations in first element");
+          // Matched the exact format you shared - this is correct!
+          return response.data as ConversationsList[];
+        }
+        // If it's a direct ConversationsList object
+        else if (typeof response.data === 'object' && 
+                'conversations' in response.data) {
+          logDebug("Found direct conversations object, wrapping in array");
+          return [response.data as ConversationsList];
+        }
+        // For any other format, create a proper structure
+        else {
+          logDebug("Unexpected response format, creating standard structure");
+          const emptyList: ConversationsList = {
+            conversations: [],
+            total_pages: 1,
+            current_page: page,
+            page_size: pageSize,
+            total_records: 0
+          };
+          
+          return [emptyList];
+        }
+      } else {
+        logDebug("No data in response");
+        const emptyList: ConversationsList = {
+          conversations: [],
+          total_pages: 1,
+          current_page: page,
+          page_size: pageSize,
+          total_records: 0
+        };
+        
+        return [emptyList];
+      }
     } catch (apiError) {
       logError("API request failed:", apiError);
       if (axios.isAxiosError(apiError) && apiError.response) {

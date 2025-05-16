@@ -4,11 +4,11 @@ import * as jose from 'jose';
 import type { RequestEvent } from './$types';
 
 // Environment variable to store JWT secret (would be properly configured in production)
-const JWT_SECRET = import.meta.env.VITE_JWT_SECRET || 'your-secret-key-for-development';
+const JWT_SECRET = import.meta.env.VITE_HEALTH_TRACKER_JWT_SECRET || 'your-secret-key-for-development';
 
 export async function GET({ url, request }: RequestEvent) {
     const authToken = url.searchParams.get('auth_token');
-    
+
     // Try to get token from Authorization header if not in query params
     let token = authToken;
     if (!token) {
@@ -30,7 +30,7 @@ export async function GET({ url, request }: RequestEvent) {
         // Verify JWT token (in production, this would also check expiration, issuer, etc.)
         const secretKey = new TextEncoder().encode(JWT_SECRET);
         let payload;
-        
+
         try {
             // Verify with jose library
             const result = await jose.jwtVerify(token, secretKey);
@@ -38,7 +38,7 @@ export async function GET({ url, request }: RequestEvent) {
             logDebug('JWT verification successful', { subject: payload.sub });
         } catch (tokenError) {
             logError('JWT verification failed', { error: tokenError });
-            
+
             // If verification fails with jose, fallback to development mode with mock data
             if (import.meta.env.DEV) {
                 // In development mode, allow using a specific token for testing

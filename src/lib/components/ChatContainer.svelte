@@ -3,7 +3,6 @@
   import ChatMessage from './ChatMessage.svelte';
   import OptionsButtons from './OptionsButtons.svelte';
   import ChatInput from './ChatInput.svelte';
-  import { Icon } from '$lib/icons';
   import { menuConfig } from '$lib/config';
   import type { OptionsButtonType } from '$lib/types';
   import { n8nService } from '$lib/services/n8nService';
@@ -577,7 +576,7 @@
         <div class="flex justify-center items-center my-6">
           <div class="thinking-loader">
             <div class="thinking-inline">
-              <span class="thinking-text">Thinking</span>
+              <span class="thinking-text">Processing</span>
               <div class="thinking-dots-inline">
                 <span></span>
                 <span></span>
@@ -596,7 +595,20 @@
           class="fixed bottom-20 right-6 bg-gradient-to-br from-blue-500 to-teal-400 text-white p-3 rounded-full shadow-lg transition-all duration-300 hover:shadow-xl scroll-to-bottom-button"
           aria-label="Scroll to bottom"
         >
-          <Icon name="scrollToBottom" size={20} />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 14l-7 7m0 0l-7-7m7 7V3"
+              />
+            </svg>
         </button>
       {/if}
     </div>

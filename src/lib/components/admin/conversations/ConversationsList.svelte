@@ -12,7 +12,7 @@ import { logDebug, logError } from '$lib/utils/secureLogger';
 // import { marked } from 'marked';
 
 export let application: string;
-export let fetchConversationsFunction: (page: number, pageSize: number) => Promise<ConversationsListType>;
+export let fetchConversationsFunction: (page: number, pageSize: number) => Promise<ConversationsListType[] | ConversationsListType>;
 
 // State
 let conversations: ConversationListItem[] = [];
@@ -35,15 +35,61 @@ async function loadConversations() {
   error = null;
 
   try {
-    const result = await fetchConversationsFunction(page, 10);
-
+    const resultData = await fetchConversationsFunction(page, 10);
+    logDebug("Result data type:", typeof resultData);
+    logDebug("Is array?", Array.isArray(resultData));
+    
+    if (Array.isArray(resultData)) {
+      logDebug("Array length:", resultData.length);
+    }
+    
+    if (typeof resultData === 'object' && resultData !== null) {
+      logDebug("Object keys:", Object.keys(resultData));
+    }
+    
+    // Handle both array and direct object responses
+    let result: ConversationsListType | null = null;
+    
+    if (Array.isArray(resultData) && resultData.length > 0) {
+      // If it's an array (as in Next.js implementation), use the first element
+      result = resultData[0];
+      logDebug("Array response detected, using first element");
+      logDebug("First element type:", typeof result);
+      if (result && typeof result === 'object') {
+        logDebug("First element keys:", Object.keys(result));
+        if ('conversations' in result) {
+          logDebug("Conversations property found in first element");
+          logDebug("Conversations array:", Array.isArray(result.conversations));
+          logDebug("Conversations length:", result.conversations?.length || 0);
+        } else {
+          logDebug("NO conversations property in first element!");
+        }
+      }
+    } else if (resultData && typeof resultData === 'object' && 'conversations' in resultData) {
+      // If it's a direct object with conversations property
+      result = resultData as ConversationsListType;
+      logDebug("Direct object response detected");
+      logDebug("Conversations property found in object");
+      logDebug("Conversations array:", Array.isArray(result.conversations));
+      logDebug("Conversations length:", result.conversations?.length || 0);
+    }
+    
     if (result && typeof result === 'object' && 'conversations' in result) {
       logDebug(`Setting ${result.conversations.length} conversations in state.`);
       conversations = result.conversations;
       totalPages = result.total_pages;
       logDebug("State updated with conversations. Total pages:", result.total_pages);
+      
+      // Log a sample of the conversations to verify structure
+      if (result.conversations && result.conversations.length > 0) {
+        logDebug("Sample conversation:", {
+          session_id: result.conversations[0].session_id,
+          user_name: result.conversations[0].user_name,
+          history_length: result.conversations[0].conversation_history?.length || 0
+        });
+      }
     } else {
-      logError("Invalid data structure in API response:", result);
+      logError("Invalid data structure in API response:", resultData);
       conversations = [];
       totalPages = 1;
       error = "Invalid data format from server.";
@@ -138,12 +184,9 @@ function decrementPage() {
   }
 }
 
-$: {
-  // Re-load when page changes
-  if (page) {
-    loadConversations();
-  }
-}
+// This $: block would cause an infinite loop 
+// since loadConversations() updates the page variable
+// We'll rely on the explicit page change functions instead
 </script>
 
 <div class="max-w-6xl mx-auto">

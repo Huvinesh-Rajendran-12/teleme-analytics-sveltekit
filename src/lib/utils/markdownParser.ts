@@ -101,7 +101,7 @@ export function safeParseMarkdown(content: string): string {
 /**
  * Parses content from an AI message that might be JSON or markdown
  */
-export function parseAIMessageContent(message: any): string {
+export function parseAIMessageContent(message: string | Record<string, unknown> | null): string {
   if (!message) return '';
   
   try {

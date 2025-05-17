@@ -7,8 +7,8 @@ export interface ActivityTrackerOptions {
   connectionCheckTimeout?: number;
   onInactivityTimeout: () => void;
   onConnectionChange?: (isConnected: boolean) => void;
-  logDebug?: (message: string, data?: any) => void;
-  logError?: (message: string, data?: any) => void;
+  logDebug?: (message: string, data?: Record<string, unknown>) => void;
+  logError?: (message: string, data?: Record<string, unknown>) => void;
 }
 
 export class ActivityTracker {
@@ -26,13 +26,13 @@ export class ActivityTracker {
 
     // Default logging functions if not provided
     if (!this.options.logDebug) {
-      this.options.logDebug = (message: string, data?: any) => {
+      this.options.logDebug = (message: string, data?: Record<string, unknown>) => {
         console.debug(message, data);
       };
     }
 
     if (!this.options.logError) {
-      this.options.logError = (message: string, data?: any) => {
+      this.options.logError = (message: string, data?: Record<string, unknown>) => {
         console.error(message, data);
       };
     }

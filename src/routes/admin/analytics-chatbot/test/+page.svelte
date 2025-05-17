@@ -8,9 +8,9 @@
   // State
   let loading = true;
   let error: string | null = null;
-  let rawResponseData: any = null;
-  let formattedData: any = null;
-  let conversations: any[] = [];
+  let rawResponseData: Record<string, unknown> | null = null;
+  let formattedData: Record<string, unknown> | null = null;
+  let conversations: Record<string, unknown>[] = [];
 
   // Load data on mount
   onMount(async () => {

@@ -58,12 +58,19 @@
       logDebug('Loading health tracker conversations, page:', currentPage);
 
       // Call the service function with timeout
+      // Define a more specific return type for the race result
+      interface ConversationsResult {
+        conversations?: Array<Record<string, unknown>>;
+        total_pages?: number;
+        [key: string]: unknown;
+      }
+
       const result = (await Promise.race([
         fetchHealthTrackerConversations(currentPage, 10),
         new Promise<null>((_, reject) =>
           setTimeout(() => reject(new Error('Request timeout')), 15000)
         )
-      ])) as any;
+      ])) as ConversationsResult[] | null;
 
       logDebug('Fetch result type:', typeof result);
 
@@ -196,7 +203,14 @@
     }
   }
 
-  function renderMessageContent(message: any): string {
+  // Define a proper message type interface
+  interface ChatMessage {
+    type?: string;
+    content?: string;
+    [key: string]: unknown;
+  }
+
+  function renderMessageContent(message: ChatMessage | null | undefined): string {
     if (!message) return '';
 
     try {

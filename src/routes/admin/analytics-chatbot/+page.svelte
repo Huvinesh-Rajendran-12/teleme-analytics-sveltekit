@@ -290,7 +290,14 @@
     }
   }
 
-  function renderMessageContent(message: any): string {
+  // Define a proper message type interface
+  interface ChatMessage {
+    type?: string;
+    content?: string;
+    [key: string]: unknown;
+  }
+
+  function renderMessageContent(message: ChatMessage | null | undefined): string {
     if (!message) return '';
 
     try {

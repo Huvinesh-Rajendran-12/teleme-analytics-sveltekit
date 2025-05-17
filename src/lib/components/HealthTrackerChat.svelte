@@ -3,14 +3,13 @@
   import { v7 as uuidv7 } from 'uuid';
   import { logError, logDebug } from '$lib/utils/secureLogger';
   import { n8nService } from '$lib/services';
-  import { checkConnectionStatus } from '$lib/utils/connectionUtils'; // Import connection utility
+  import { checkConnectionStatus } from '$lib/utils/connectionUtils';
+  import { ActivityTracker, shouldAddConnectionErrorMessage } from '$lib/utils/activityUtils';
   import ChatMessage from './ChatMessage.svelte';
   import OptionsButtons from './OptionsButtons.svelte';
   import ChatInput from './ChatInput.svelte';
   // Import environment variables with fallback values
-  // This should ideally come from $env/static/public or similar config
-
-  const HEALTH_TRACKER_TIMEOUT = import.meta.env.VITE_HEALTH_TRACKER_TIMEOUT || 10;
+  const HEALTH_TRACKER_TIMEOUT = Number(import.meta.env.VITE_HEALTH_TRACKER_TIMEOUT) || 10;
   const CONNECTION_CHECK_TIMEOUT = 5000; // 5 seconds timeout for connection checks
 
   export let patientId: string | number;
@@ -42,12 +41,13 @@
   let sessionId = uuidv7();
   let selectedPeriod = 1;
   let isScrolledAway = false;
-  let lastActivity = Date.now();
   let initialFetchDone = false;
+
+  // Activity tracker instance
+  let activityTracker: ActivityTracker;
 
   let chatEndRef: HTMLDivElement;
   let chatContainerRef: HTMLDivElement;
-  let inactivityTimerId: number | null = null;
 
   const POST_RESPONSE_BUTTONS = [
     {
@@ -103,59 +103,34 @@
     }
   ];
 
+  // Function to handle user activity
   const recordActivity = () => {
-    logDebug('Activity recorded');
-    lastActivity = Date.now();
+    if (activityTracker) {
+      activityTracker.recordActivity();
+    }
+  };
+  
+  // Function to handle connection status changes
+  const handleConnectionChange = (connected: boolean) => {
+    logDebug(`Connection status changed to: ${connected}`);
+    isConnected = connected;
     
-    // If we're in an error state due to connection issues, 
-    // check the connection again on user activity
-    if (!isConnected || chatState.stage === 'error') {
-      const n8nEndpoint = import.meta.env.VITE_N8N_HEALTH_TRACKER_WEBHOOK_URL || '';
-      checkConnectionStatus(n8nEndpoint, CONNECTION_CHECK_TIMEOUT).then((online) => {
-        // Only update state if connection status changed
-        if (online !== isConnected) {
-          logDebug(`Connection status changed from ${isConnected} to ${online}`);
-          isConnected = online;
-          
-          // Only notify if connection was restored
-          if (online && chatState.stage === 'error') {
-            // Only move to post_response if we were in error state
-            chatState.stage = 'post_response';
-            // Only add a message if we successfully recovered
-            addMessage('assistant', 'Connection to the Health Tracker service has been restored. You can continue your session.');
-          }
-        }
-      });
+    // If connection restored and we were in error state
+    if (connected && chatState.stage === 'error') {
+      chatState.stage = 'post_response';
+      addMessage('assistant', 'Connection to the Health Tracker service has been restored. You can continue your session.');
+    }
+  };
+  
+  // Function to handle inactivity timeout
+  const handleInactivityTimeout = () => {
+    logDebug('Inactivity timeout reached');
+    if (chatState.stage !== 'welcome') {
+      endConversation(); // End conversation due to inactivity
     }
   };
 
-  // Helper function to check if we should add a connection error message
-  const shouldAddConnectionErrorMessage = (content: string): boolean => {
-    // Check the last message to avoid duplicate connection error messages
-    const lastMessage = chatState.messages[chatState.messages.length - 1];
-    
-    // Connection error message patterns
-    const connectionErrorPatterns = [
-      'Cannot connect to the Health Tracker service',
-      'Still unable to connect',
-      'Connection to Health Tracker service lost',
-      'network connection'
-    ];
-    
-    // If the message we're trying to add contains connection error text
-    const isConnectionErrorMsg = connectionErrorPatterns.some(pattern => 
-      typeof content === 'string' && content.includes(pattern)
-    );
-    
-    // If this is a connection error message, check if last message was also about connection
-    if (isConnectionErrorMsg && lastMessage && typeof lastMessage.content === 'string') {
-      return !connectionErrorPatterns.some(pattern => 
-        lastMessage.content.toString().includes(pattern)
-      );
-    }
-    
-    return true; // Add message if it's not a connection error or there's no duplicate
-  };
+  // Now using the imported shouldAddConnectionErrorMessage utility function
 
   const addMessage = (role: 'user' | 'assistant', content: string | object) => {
     const finalContent =
@@ -175,8 +150,12 @@
       });
     }
 
+    // Get the last message content for duplicate checking
+    const lastMessage = chatState.messages[chatState.messages.length - 1];
+    const lastMessageContent = lastMessage ? lastMessage.content : undefined;
+    
     // Prevent adding duplicate connection error messages
-    if (role === 'assistant' && !shouldAddConnectionErrorMessage(finalContent.toString())) {
+    if (role === 'assistant' && !shouldAddConnectionErrorMessage(finalContent.toString(), lastMessageContent)) {
       logDebug('Skipping duplicate connection error message');
       return;
     }
@@ -238,9 +217,8 @@
     logDebug('Attempting to fetch data from n8n');
     recordActivity();
 
-    // Check connection status before attempting the API call
-    const n8nEndpoint = import.meta.env.VITE_N8N_HEALTH_TRACKER_WEBHOOK_URL || '';
-    const connectionStatus = await checkConnectionStatus(n8nEndpoint, CONNECTION_CHECK_TIMEOUT);
+    // Check connection status using the activity tracker
+    const connectionStatus = activityTracker ? await activityTracker.checkConnection() : false;
     
     if (!connectionStatus) {
       logError('Connection check failed, cannot fetch data.');
@@ -375,8 +353,8 @@
     loadingState = 'idle';
 
     // Perform a connection check immediately when starting a new conversation
-    const n8nEndpoint = import.meta.env.VITE_N8N_HEALTH_TRACKER_WEBHOOK_URL || '';
-    checkConnectionStatus(n8nEndpoint, CONNECTION_CHECK_TIMEOUT).then((online) => {
+    if (activityTracker) {
+      activityTracker.retryConnection().then((online) => {
       isConnected = online;
       if (!online) {
         logError('Connection check failed after starting new conversation.');
@@ -389,7 +367,8 @@
         logDebug('Connection re-established after starting new conversation.');
         // No message needed, user can now select a date range
       }
-    });
+      });
+    }
   };
 
   const handleScrollEvent = () => {
@@ -500,9 +479,8 @@
     logDebug(`Sending question: ${question.substring(0, 50)}...`);
     recordActivity();
 
-    // Check connection status before attempting to send the question
-    const n8nEndpoint = import.meta.env.VITE_N8N_HEALTH_TRACKER_WEBHOOK_URL || '';
-    const connectionStatus = await checkConnectionStatus(n8nEndpoint, CONNECTION_CHECK_TIMEOUT);
+    // Check connection status using the activity tracker
+    const connectionStatus = activityTracker ? await activityTracker.checkConnection() : false;
     
     if (!connectionStatus) {
       logError('Connection check failed, cannot send question.');
@@ -657,54 +635,43 @@
     }
 
     const n8nEndpoint = import.meta.env.VITE_N8N_HEALTH_TRACKER_WEBHOOK_URL || '';
-
-    // Check connection status on mount
-    checkConnectionStatus(n8nEndpoint, CONNECTION_CHECK_TIMEOUT).then((online) => {
-      isConnected = online;
-      if (!online) {
-        logError('Initial connection check failed. Health Tracker service may be unreachable.');
-        console.warn('Initial connection check failed. Health Tracker service may be unreachable.');
-        // Optional: Add a message to chat about connection issues
-        // addMessage('assistant', 'Warning: Cannot connect to the Health Tracker service. Features may be limited.');
-      } else {
-        logDebug('Initial connection check successful.');
-      }
+    
+    // Initialize the activity tracker
+    activityTracker = new ActivityTracker({
+      timeoutMinutes: HEALTH_TRACKER_TIMEOUT,
+      connectionCheckEndpoint: n8nEndpoint,
+      connectionCheckTimeout: CONNECTION_CHECK_TIMEOUT,
+      onInactivityTimeout: handleInactivityTimeout,
+      onConnectionChange: handleConnectionChange,
+      logDebug: logDebug,
+      logError: logError
     });
-
-    // No periodic connection check - we'll only check on user interaction
-
-    const trackActivity = () => recordActivity();
-    document.addEventListener('mousedown', trackActivity);
-    document.addEventListener('keypress', trackActivity);
-    document.addEventListener('touchstart', trackActivity);
+    
+    // Start tracking activity
+    activityTracker.startInactivityTimer();
+    activityTracker.attachActivityListeners(chatContainerRef);
+    
+    // Initial connection status
+    isConnected = activityTracker.getConnectionStatus();
+    
+    // Additional component-specific event listener for scroll events
     chatContainerRef?.addEventListener('scroll', handleScrollEvent);
-
-    // Set up inactivity timer
-    inactivityTimerId = window.setInterval(() => {
-      const inactiveTime = Date.now() - lastActivity;
-      const TIMEOUT_MINUTES = Number(HEALTH_TRACKER_TIMEOUT);
-      const inactivityLimit = TIMEOUT_MINUTES * 60 * 1000;
-
-      if (inactiveTime >= inactivityLimit && chatState.stage !== 'welcome') {
-        endConversation(); // End conversation due to inactivity
-      }
-    }, 60000); // Check every 60 seconds
 
     return () => {
       logDebug('Component onDestroy cleanup');
-      if (inactivityTimerId) clearInterval(inactivityTimerId);
+      if (activityTracker) {
+        activityTracker.cleanup();
+      }
       if (n8nService?.cleanup) n8nService.cleanup();
-
-      document.removeEventListener('mousedown', trackActivity);
-      document.removeEventListener('keypress', trackActivity);
-      document.removeEventListener('touchstart', trackActivity);
       chatContainerRef?.removeEventListener('scroll', handleScrollEvent);
     };
   });
 
   onDestroy(() => {
     logDebug('Component onDestroy');
-    if (inactivityTimerId) clearInterval(inactivityTimerId);
+    if (activityTracker) {
+      activityTracker.cleanup();
+    }
   });
 
   // Reactive block to scroll to the bottom after messages update
@@ -760,8 +727,8 @@
             }, 2000); // Reset after 2 seconds
           }
           
-          const n8nEndpoint = import.meta.env.VITE_N8N_HEALTH_TRACKER_WEBHOOK_URL || '';
-          checkConnectionStatus(n8nEndpoint, CONNECTION_CHECK_TIMEOUT).then((online) => {
+          if (activityTracker) {
+            activityTracker.retryConnection().then((online) => {
             isConnected = online;
             // Only add message if connection status changed to online
             if (online) {
@@ -776,7 +743,8 @@
                 chatState.stage = 'error';
               }
             }
-          });
+                      });
+                    }
         }}
       >
         Retry
@@ -840,9 +808,9 @@
                     btn.innerHTML = '<div class="flex items-center justify-center"><span class="text-base">🔄</span><span class="font-medium text-sm mx-2">Checking...</span></div>';
                     btn.disabled = true;
                     
-                    // Check connection first
-                    const n8nEndpoint = import.meta.env.VITE_N8N_HEALTH_TRACKER_WEBHOOK_URL || '';
-                    checkConnectionStatus(n8nEndpoint, CONNECTION_CHECK_TIMEOUT).then((online) => {
+                    // Check connection first using activity tracker
+                    if (activityTracker) {
+                      activityTracker.retryConnection().then((online) => {
                       isConnected = online;
                       // Reset button
                       setTimeout(() => {
@@ -855,7 +823,8 @@
                         startNewConversation();
                       }
                       // If not connected, do nothing - the connection banner will still show
-                    });
+                      });
+                    }
                   }}
                 >
                   <div class="flex items-center justify-center">

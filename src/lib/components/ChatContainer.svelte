@@ -8,6 +8,7 @@
   import type { OptionsButtonType } from '$lib/types';
   import { n8nService } from '$lib/services/n8nService';
   import { checkConnectionStatus } from '$lib/utils/connectionUtils';
+  import { ActivityTracker, shouldAddConnectionErrorMessage } from '$lib/utils/activityUtils';
   import type { ChatState, Message, Params } from '$lib/types';
 
   export let params: Params | undefined = undefined;
@@ -28,9 +29,8 @@
   // Maximum question length allowed
   const MAX_QUESTION_LENGTH = 1000;
 
-  // Inactivity tracker state and refs
-  let lastActivity = Date.now();
-  let inactivityTimerRef: number | null = null;
+  // Activity tracker instance
+  let activityTracker: ActivityTracker;
 
   let chatEndRef: HTMLDivElement;
   let chatContainer: HTMLDivElement;
@@ -43,58 +43,32 @@
     }
   }
 
+  // Function to handle user activity
   function recordActivity() {
-    lastActivity = Date.now();
-    
-    // If we're in welcome stage or connection status is false,
-    // check the connection again on user activity
-    if (!isConnected || chatState.stage === 'welcome') {
-      const n8nEndpoint = import.meta.env.VITE_N8N_ANALYTICS_WEBHOOK_URL || '';
-      checkConnectionStatus(n8nEndpoint, 5000).then((online) => {
-        // Only update if status changed
-        if (online !== isConnected) {
-          console.debug(`Connection status changed from ${isConnected} to ${online}`);
-          isConnected = online;
-          
-          // If connection was restored, notify user
-          if (online) {
-            addMessage('assistant', 'Connection restored! You can continue using the Analytics Assistant.');
-            if (chatState.stage === 'welcome') {
-              chatState.stage = 'initial';
-            }
-          }
-        }
-      });
+    if (activityTracker) {
+      activityTracker.recordActivity();
     }
+  }
+  
+  // Function to handle connection status changes
+  function handleConnectionChange(connected: boolean) {
+    console.debug(`Connection status changed to: ${connected}`);
+    isConnected = connected;
+    
+    // If connection restored and we were in a conversation
+    if (connected && chatState.stage === 'welcome' && chatState.messages.length > 0) {
+      addMessage('assistant', 'Connection restored! You can continue using the Analytics Assistant.');
+      chatState.stage = 'initial';
+    }
+  }
+  
+  // Function to handle inactivity timeout
+  function handleInactivityTimeout() {
+    console.debug('Inactivity timeout reached');
+    endConversationDueToInactivity();
   }
 
-  // Helper function to check if we should add a connection error message
-  function shouldAddConnectionErrorMessage(content: string): boolean {
-    // Check the last message to avoid duplicate connection error messages
-    const lastMessage = chatState.messages[chatState.messages.length - 1];
-    
-    // Connection error message patterns
-    const connectionErrorPatterns = [
-      'Cannot connect to the service',
-      'Still unable to connect',
-      'Connection to Analytics service lost',
-      'network connection'
-    ];
-    
-    // If the message we're trying to add contains connection error text
-    const isConnectionErrorMsg = connectionErrorPatterns.some(pattern => 
-      content.includes(pattern)
-    );
-    
-    // If this is a connection error message, check if last message was also about connection
-    if (isConnectionErrorMsg && lastMessage) {
-      return !connectionErrorPatterns.some(pattern => 
-        lastMessage.content.includes(pattern)
-      );
-    }
-    
-    return true; // Add message if it's not a connection error or there's no duplicate
-  }
+  // Now using the imported shouldAddConnectionErrorMessage utility function from activityUtils.ts
 
   function addMessage(role: 'user' | 'assistant', content: string) {
     if (content === '[object Object]') {
@@ -102,8 +76,12 @@
         "Sorry, I couldn't process that request due to an unexpected response. Please try again.";
     }
     
+    // Get the last message content for duplicate checking
+    const lastMessage = chatState.messages[chatState.messages.length - 1];
+    const lastMessageContent = lastMessage ? lastMessage.content : undefined;
+    
     // Prevent adding duplicate connection error messages
-    if (role === 'assistant' && !shouldAddConnectionErrorMessage(content)) {
+    if (role === 'assistant' && !shouldAddConnectionErrorMessage(content, lastMessageContent)) {
       console.debug('Skipping duplicate connection error message');
       return;
     }
@@ -429,57 +407,49 @@
     }
 
     // Use the actual N8N API endpoint or configure via an environment variable
-    // This should ideally point to a lightweight, always-on endpoint of your backend/service
-    const n8nEndpoint = import.meta.env.VITE_N8N_ANALYTICS_WEBHOOK_URL || ''; // Replace with actual endpoint if different
-
-    // Check connection status
-    checkConnectionStatus(n8nEndpoint, 5000).then((online) => {
-      isConnected = online;
-      if (!online) {
-        console.warn('Initial connection check failed. Service may be unreachable.');
-        // Only add message if the chat is already started
-        if (chatState.messages.length > 0 && chatState.stage !== 'welcome') {
-          addMessage('assistant', 'Warning: Cannot connect to the Analytics service. The chat functionality may be limited until connection is restored.');
-          chatState.stage = 'welcome';
-        }
-      }
+    const n8nEndpoint = import.meta.env.VITE_N8N_ANALYTICS_WEBHOOK_URL || '';
+    
+    // Initialize the activity tracker
+    const TIMEOUT_MINUTES = Number(import.meta.env.VITE_ANALYTICS_CHATBOT_TIMEOUT) || 5; // Default to 5 minutes
+    
+    activityTracker = new ActivityTracker({
+      timeoutMinutes: TIMEOUT_MINUTES,
+      connectionCheckEndpoint: n8nEndpoint,
+      connectionCheckTimeout: 5000,
+      onInactivityTimeout: handleInactivityTimeout,
+      onConnectionChange: handleConnectionChange,
+      logDebug: console.debug,
+      logError: console.error
     });
-
-    // Set up inactivity timer
-    inactivityTimerRef = window.setInterval(() => {
-      const inactiveTime = Date.now() - lastActivity;
-      const TIMEOUT_MINUTES = Number(import.meta.env.VITE_ANALYTICS_CHATBOT_TIMEOUT) || 5; // Default to 5 minutes
-      const inactivityLimit = TIMEOUT_MINUTES * 60 * 1000;
-
-      if (inactiveTime >= inactivityLimit && chatState.stage !== 'welcome') {
-        endConversationDueToInactivity();
-      }
-    }, 30000); // Check every 30 seconds
-
-    // Global event listeners for activity tracking
-    const trackActivity = () => recordActivity();
-    document.addEventListener('mousedown', trackActivity);
-    document.addEventListener('keypress', trackActivity);
-    document.addEventListener('touchstart', trackActivity);
+    
+    // Start tracking activity
+    activityTracker.startInactivityTimer();
+    activityTracker.attachActivityListeners();
+    
+    // Initial connection status
+    isConnected = activityTracker.getConnectionStatus();
+    
+    // Check if we need to show a warning about connection
+    if (!isConnected && chatState.messages.length > 0 && chatState.stage !== 'welcome') {
+      addMessage('assistant', 'Warning: Cannot connect to the Analytics service. The chat functionality may be limited until connection is restored.');
+      chatState.stage = 'welcome';
+    }
 
     return () => {
-      if (inactivityTimerRef) {
-        clearInterval(inactivityTimerRef);
+      if (activityTracker) {
+        activityTracker.cleanup();
       }
-      document.removeEventListener('mousedown', trackActivity);
-      document.removeEventListener('keypress', trackActivity);
-      document.removeEventListener('touchstart', trackActivity);
 
       if (chatContainer && handleScroll) {
         // Check if handleScroll was assigned
-        chatContainer.removeEventListener('scroll', handleScroll); // Use the variable
+        chatContainer.removeEventListener('scroll', handleScroll);
       }
     };
   });
 
   onDestroy(() => {
-    if (inactivityTimerRef) {
-      clearInterval(inactivityTimerRef);
+    if (activityTracker) {
+      activityTracker.cleanup();
     }
   });
 </script>
@@ -510,8 +480,8 @@
             }, 2000); // Reset after 2 seconds
           }
           
-          const n8nEndpoint = import.meta.env.VITE_N8N_ANALYTICS_WEBHOOK_URL || '';
-          checkConnectionStatus(n8nEndpoint, 5000).then((online) => {
+          if (activityTracker) {
+            activityTracker.retryConnection().then((online) => {
             isConnected = online;
             // Only add message if connection status changed to online
             if (online) {
@@ -520,7 +490,8 @@
                 chatState.stage = 'initial';
               }
             }
-          });
+            });
+          }
         }}
       >
         Retry
@@ -640,9 +611,9 @@
                   btn.innerText = 'Checking Connection...';
                   btn.disabled = true;
                   
-                  // Check connection first
-                  const n8nEndpoint = import.meta.env.VITE_N8N_ANALYTICS_WEBHOOK_URL || '';
-                  checkConnectionStatus(n8nEndpoint, 5000).then((online) => {
+                  // Check connection using the activity tracker
+                  if (activityTracker) {
+                    activityTracker.retryConnection().then((online) => {
                     isConnected = online;
                     // Reset button
                     setTimeout(() => {
@@ -655,7 +626,8 @@
                       startConversation();
                     }
                     // If not connected, do nothing - the connection banner will still show
-                  });
+                    });
+                  }
                 }}
                 class="btn-gradient text-white font-semibold py-3 px-8 rounded-full shadow"
               >

@@ -3,14 +3,14 @@
   import { v7 as uuidv7 } from 'uuid';
   import { logError, logDebug } from '$lib/utils/secureLogger';
   import { n8nService } from '$lib/services';
-  import { checkConnectionStatus } from '$lib/utils/connectionUtils';
   import { ActivityTracker, shouldAddConnectionErrorMessage } from '$lib/utils/activityUtils';
+  import ConnectionStatusBanner from './common/ConnectionStatusBanner.svelte';
+  import { TIMEOUTS, ENDPOINTS, CONNECTION_CHECK_TIMEOUT, UI_TEXT } from '$lib/config/chatConfig';
   import ChatMessage from './ChatMessage.svelte';
   import OptionsButtons from './OptionsButtons.svelte';
   import ChatInput from './ChatInput.svelte';
-  // Import environment variables with fallback values
-  const HEALTH_TRACKER_TIMEOUT = Number(import.meta.env.VITE_HEALTH_TRACKER_TIMEOUT) || 10;
-  const CONNECTION_CHECK_TIMEOUT = 5000; // 5 seconds timeout for connection checks
+  // Use centralized config values
+  const HEALTH_TRACKER_TIMEOUT = TIMEOUTS.healthTracker;
 
   export let patientId: string | number;
   export let userId: string | number;
@@ -634,12 +634,12 @@
       addMessage('assistant', 'Please select a date range:');
     }
 
-    const n8nEndpoint = import.meta.env.VITE_N8N_HEALTH_TRACKER_WEBHOOK_URL || '';
+    const n8nEndpoint = ENDPOINTS.healthTracker;
     
-    // Initialize the activity tracker
+    // Initialize the activity tracker with config values
     activityTracker = new ActivityTracker({
       timeoutMinutes: HEALTH_TRACKER_TIMEOUT,
-      connectionCheckEndpoint: n8nEndpoint,
+      connectionCheckEndpoint: ENDPOINTS.healthTracker,
       connectionCheckTimeout: CONNECTION_CHECK_TIMEOUT,
       onInactivityTimeout: handleInactivityTimeout,
       onConnectionChange: handleConnectionChange,
@@ -703,54 +703,29 @@
 
 <div class="flex flex-col h-full w-full">
   <!-- Connection status indicator -->
-  {#if !isConnected}
-    <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-2 text-sm flex items-center justify-between">
-      <div class="flex items-center">
-        <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <span>Connection to Health Tracker service lost. Please click Retry to reconnect.</span>
-      </div>
-      <button 
-        class="text-red-700 hover:text-red-900 focus:outline-none" 
-        on:click={() => {
-          // Visual feedback that we're checking
-          const retryBtn = document.activeElement as HTMLButtonElement;
-          if (retryBtn) {
-            const originalText = retryBtn.innerText;
-            retryBtn.innerText = 'Checking...';
-            retryBtn.disabled = true;
-            
-            setTimeout(() => {
-              retryBtn.innerText = originalText;
-              retryBtn.disabled = false;
-            }, 2000); // Reset after 2 seconds
+  <ConnectionStatusBanner 
+    isConnected={isConnected} 
+    serviceType="healthTracker"
+    onRetry={async () => {
+      if (activityTracker) {
+        const online = await activityTracker.retryConnection();
+        // Handle connection result
+        if (online) {
+          addMessage('assistant', UI_TEXT.connection.restored.healthTracker);
+          if (chatState.stage === 'error') {
+            chatState.stage = 'post_response';
           }
-          
-          if (activityTracker) {
-            activityTracker.retryConnection().then((online) => {
-            isConnected = online;
-            // Only add message if connection status changed to online
-            if (online) {
-              addMessage('assistant', 'Connection restored! You can continue using the Health Tracker.');
-              if (chatState.stage === 'error') {
-                chatState.stage = 'post_response';
-              }
-            } else {
-              // If connection is still down, update the UI instead of adding message
-              // The banner will still be visible showing the connection is down
-              if (chatState.stage !== 'error') {
-                chatState.stage = 'error';
-              }
-            }
-                      });
-                    }
-        }}
-      >
-        Retry
-      </button>
-    </div>
-  {/if}
+        } else {
+          // If connection is still down, update the UI instead of adding message
+          if (chatState.stage !== 'error') {
+            chatState.stage = 'error';
+          }
+        }
+        return online;
+      }
+      return false;
+    }}
+  />
   
   <div
     bind:this={chatContainerRef}

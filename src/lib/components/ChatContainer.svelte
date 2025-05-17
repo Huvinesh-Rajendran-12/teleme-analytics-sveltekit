@@ -4,11 +4,12 @@
   import ChatMessage from './ChatMessage.svelte';
   import OptionsButtons from './OptionsButtons.svelte';
   import ChatInput from './ChatInput.svelte';
+  import ConnectionStatusBanner from './common/ConnectionStatusBanner.svelte';
   import { menuConfig } from '$lib/config';
   import type { OptionsButtonType } from '$lib/types';
   import { n8nService } from '$lib/services/n8nService';
-  import { checkConnectionStatus } from '$lib/utils/connectionUtils';
   import { ActivityTracker, shouldAddConnectionErrorMessage } from '$lib/utils/activityUtils';
+  import { TIMEOUTS, ENDPOINTS, CONNECTION_CHECK_TIMEOUT, UI_TEXT } from '$lib/config/chatConfig';
   import type { ChatState, Message, Params } from '$lib/types';
 
   export let params: Params | undefined = undefined;
@@ -26,8 +27,7 @@
   let durationError: string | null = null;
   // chatInputError variable removed as it was unused
 
-  // Maximum question length allowed
-  const MAX_QUESTION_LENGTH = 1000;
+  // Use the MAX_QUESTION_LENGTH from config
 
   // Activity tracker instance
   let activityTracker: ActivityTracker;
@@ -406,16 +406,11 @@
       // Avoid logging sensitive params directly
     }
 
-    // Use the actual N8N API endpoint or configure via an environment variable
-    const n8nEndpoint = import.meta.env.VITE_N8N_ANALYTICS_WEBHOOK_URL || '';
-    
-    // Initialize the activity tracker
-    const TIMEOUT_MINUTES = Number(import.meta.env.VITE_ANALYTICS_CHATBOT_TIMEOUT) || 5; // Default to 5 minutes
-    
+    // Use centralized config for endpoints and timeouts
     activityTracker = new ActivityTracker({
-      timeoutMinutes: TIMEOUT_MINUTES,
-      connectionCheckEndpoint: n8nEndpoint,
-      connectionCheckTimeout: 5000,
+      timeoutMinutes: TIMEOUTS.analytics,
+      connectionCheckEndpoint: ENDPOINTS.analytics,
+      connectionCheckTimeout: CONNECTION_CHECK_TIMEOUT,
       onInactivityTimeout: handleInactivityTimeout,
       onConnectionChange: handleConnectionChange,
       logDebug: console.debug,
@@ -456,48 +451,23 @@
 
 <div class="flex flex-col h-full w-full" data-testid="chat-container">
   <!-- Connection status indicator -->
-  {#if !isConnected}
-    <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-2 text-sm flex items-center justify-between">
-      <div class="flex items-center">
-        <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <span>Connection to Analytics service lost. Please click Retry to reconnect.</span>
-      </div>
-      <button 
-        class="text-red-700 hover:text-red-900 focus:outline-none" 
-        on:click={() => {
-          // Visual feedback that we're checking
-          const retryBtn = document.activeElement as HTMLButtonElement;
-          if (retryBtn) {
-            const originalText = retryBtn.innerText;
-            retryBtn.innerText = 'Checking...';
-            retryBtn.disabled = true;
-            
-            setTimeout(() => {
-              retryBtn.innerText = originalText;
-              retryBtn.disabled = false;
-            }, 2000); // Reset after 2 seconds
+  <ConnectionStatusBanner 
+    isConnected={isConnected} 
+    serviceType="analytics"
+    onRetry={async () => {
+      if (activityTracker) {
+        const online = await activityTracker.retryConnection();
+        if (online) {
+          addMessage('assistant', UI_TEXT.connection.restored.analytics);
+          if (chatState.stage === 'welcome') {
+            chatState.stage = 'initial';
           }
-          
-          if (activityTracker) {
-            activityTracker.retryConnection().then((online) => {
-            isConnected = online;
-            // Only add message if connection status changed to online
-            if (online) {
-              addMessage('assistant', 'Connection restored! You can continue using the Analytics Assistant.');
-              if (chatState.stage === 'welcome') {
-                chatState.stage = 'initial';
-              }
-            }
-            });
-          }
-        }}
-      >
-        Retry
-      </button>
-    </div>
-  {/if}
+        }
+        return online;
+      }
+      return false;
+    }}
+  />
   
   <div
     class="flex-grow overflow-y-auto bg-gradient-to-b-gray-white chat-container custom-scrollbar"

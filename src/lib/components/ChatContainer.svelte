@@ -45,6 +45,55 @@
 
   function recordActivity() {
     lastActivity = Date.now();
+    
+    // If we're in welcome stage or connection status is false,
+    // check the connection again on user activity
+    if (!isConnected || chatState.stage === 'welcome') {
+      const n8nEndpoint = import.meta.env.VITE_N8N_ANALYTICS_WEBHOOK_URL || '';
+      checkConnectionStatus(n8nEndpoint, 5000).then((online) => {
+        // Only update if status changed
+        if (online !== isConnected) {
+          console.debug(`Connection status changed from ${isConnected} to ${online}`);
+          isConnected = online;
+          
+          // If connection was restored, notify user
+          if (online) {
+            addMessage('assistant', 'Connection restored! You can continue using the Analytics Assistant.');
+            if (chatState.stage === 'welcome') {
+              chatState.stage = 'initial';
+            }
+          }
+        }
+      });
+    }
+  }
+
+  // Helper function to check if we should add a connection error message
+  function shouldAddConnectionErrorMessage(content: string): boolean {
+    // Check the last message to avoid duplicate connection error messages
+    const lastMessage = chatState.messages[chatState.messages.length - 1];
+    
+    // Connection error message patterns
+    const connectionErrorPatterns = [
+      'Cannot connect to the service',
+      'Still unable to connect',
+      'Connection to Analytics service lost',
+      'network connection'
+    ];
+    
+    // If the message we're trying to add contains connection error text
+    const isConnectionErrorMsg = connectionErrorPatterns.some(pattern => 
+      content.includes(pattern)
+    );
+    
+    // If this is a connection error message, check if last message was also about connection
+    if (isConnectionErrorMsg && lastMessage) {
+      return !connectionErrorPatterns.some(pattern => 
+        lastMessage.content.includes(pattern)
+      );
+    }
+    
+    return true; // Add message if it's not a connection error or there's no duplicate
   }
 
   function addMessage(role: 'user' | 'assistant', content: string) {
@@ -52,6 +101,13 @@
       content =
         "Sorry, I couldn't process that request due to an unexpected response. Please try again.";
     }
+    
+    // Prevent adding duplicate connection error messages
+    if (role === 'assistant' && !shouldAddConnectionErrorMessage(content)) {
+      console.debug('Skipping duplicate connection error message');
+      return;
+    }
+    
     const newMessage: Message = {
       id: v7(),
       role,
@@ -171,6 +227,7 @@
         'Cannot connect to the service. Please check your network connection and try again later.'
       );
       chatState.loading = false; // Ensure loading is off
+      chatState.stage = 'welcome'; // Move to welcome stage so user can restart
       return; // Stop execution if not connected
     }
 
@@ -274,11 +331,11 @@
 
     // Check connection status before attempting the API call
     if (!isConnected) {
-      addMessage(
-        'assistant',
-        'Cannot connect to the service. Please check your network connection and try again later.'
-      );
+      // Check if there's already a connection error message to avoid duplicates
+      const connectionErrorMsg = 'Cannot connect to the service. Please check your network connection and try again later.';
+      addMessage('assistant', connectionErrorMsg);
       chatState.loading = false; // Ensure loading is off
+      chatState.stage = 'welcome'; // Move to welcome stage so user can restart
       return; // Stop execution if not connected
     }
 
@@ -380,8 +437,11 @@
       isConnected = online;
       if (!online) {
         console.warn('Initial connection check failed. Service may be unreachable.');
-        // Optionally, add a message to the chat here or show a different UI indicator
-        // addMessage("assistant", "Warning: Cannot connect to the service. Features may be limited.");
+        // Only add message if the chat is already started
+        if (chatState.messages.length > 0 && chatState.stage !== 'welcome') {
+          addMessage('assistant', 'Warning: Cannot connect to the Analytics service. The chat functionality may be limited until connection is restored.');
+          chatState.stage = 'welcome';
+        }
       }
     });
 
@@ -425,6 +485,49 @@
 </script>
 
 <div class="flex flex-col h-full w-full" data-testid="chat-container">
+  <!-- Connection status indicator -->
+  {#if !isConnected}
+    <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-2 text-sm flex items-center justify-between">
+      <div class="flex items-center">
+        <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span>Connection to Analytics service lost. Please click Retry to reconnect.</span>
+      </div>
+      <button 
+        class="text-red-700 hover:text-red-900 focus:outline-none" 
+        on:click={() => {
+          // Visual feedback that we're checking
+          const retryBtn = document.activeElement as HTMLButtonElement;
+          if (retryBtn) {
+            const originalText = retryBtn.innerText;
+            retryBtn.innerText = 'Checking...';
+            retryBtn.disabled = true;
+            
+            setTimeout(() => {
+              retryBtn.innerText = originalText;
+              retryBtn.disabled = false;
+            }, 2000); // Reset after 2 seconds
+          }
+          
+          const n8nEndpoint = import.meta.env.VITE_N8N_ANALYTICS_WEBHOOK_URL || '';
+          checkConnectionStatus(n8nEndpoint, 5000).then((online) => {
+            isConnected = online;
+            // Only add message if connection status changed to online
+            if (online) {
+              addMessage('assistant', 'Connection restored! You can continue using the Analytics Assistant.');
+              if (chatState.stage === 'welcome') {
+                chatState.stage = 'initial';
+              }
+            }
+          });
+        }}
+      >
+        Retry
+      </button>
+    </div>
+  {/if}
+  
   <div
     class="flex-grow overflow-y-auto bg-gradient-to-b-gray-white chat-container custom-scrollbar"
     on:wheel={(e) => e.stopPropagation()}
@@ -527,12 +630,45 @@
 
         {#if chatState.stage === 'welcome' && chatState.messages.length > 0}
           <div class="flex justify-center mt-6">
-            <button
-              on:click={startConversation}
-              class="btn-gradient text-white font-semibold py-3 px-8 rounded-full shadow"
-            >
-              Start New Conversation
-            </button>
+            <!-- If we're not connected, show the Try Again button with connection check -->
+            {#if !isConnected}
+              <button
+                on:click={(e) => {
+                  // Visual feedback
+                  const btn = e.currentTarget as HTMLButtonElement;
+                  const originalInnerHTML = btn.innerText;
+                  btn.innerText = 'Checking Connection...';
+                  btn.disabled = true;
+                  
+                  // Check connection first
+                  const n8nEndpoint = import.meta.env.VITE_N8N_ANALYTICS_WEBHOOK_URL || '';
+                  checkConnectionStatus(n8nEndpoint, 5000).then((online) => {
+                    isConnected = online;
+                    // Reset button
+                    setTimeout(() => {
+                      btn.innerText = originalInnerHTML;
+                      btn.disabled = false;
+                    }, 1000);
+                    
+                    if (online) {
+                      // If connected, start a new conversation
+                      startConversation();
+                    }
+                    // If not connected, do nothing - the connection banner will still show
+                  });
+                }}
+                class="btn-gradient text-white font-semibold py-3 px-8 rounded-full shadow"
+              >
+                Try Again
+              </button>
+            {:else}
+              <button
+                on:click={startConversation}
+                class="btn-gradient text-white font-semibold py-3 px-8 rounded-full shadow"
+              >
+                Start New Conversation
+              </button>
+            {/if}
           </div>
         {/if}
       {/if}

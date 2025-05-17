@@ -1,16 +1,21 @@
 <script lang="ts">
   import { onMount, onDestroy, tick } from 'svelte';
   import { v7 } from 'uuid';
-  import ChatMessage from './ChatMessage.svelte';
-  import OptionsButtons from './OptionsButtons.svelte';
   import ChatInput from './ChatInput.svelte';
-  import ConnectionStatusBanner from './common/ConnectionStatusBanner.svelte';
   import { menuConfig } from '$lib/config';
   import type { OptionsButtonType } from '$lib/types';
   import { n8nService } from '$lib/services/n8nService';
   import { ActivityTracker, shouldAddConnectionErrorMessage } from '$lib/utils/activityUtils';
   import { TIMEOUTS, ENDPOINTS, CONNECTION_CHECK_TIMEOUT, UI_TEXT } from '$lib/config/chatConfig';
   import type { ChatState, Message, Params } from '$lib/types';
+
+  // Common components
+  import ConnectionStatusBanner from './common/ConnectionStatusBanner.svelte';
+  import MessageList from './common/MessageList.svelte';
+  import LoadingIndicator from './common/LoadingIndicator.svelte';
+  import ChatOptions from './common/ChatOptions.svelte';
+  import ScrollToBottomButton from './common/ScrollToBottomButton.svelte';
+  import WelcomeScreen from './common/WelcomeScreen.svelte';
 
   export let params: Params | undefined = undefined;
   export let onRestartConversation: () => void;
@@ -49,19 +54,22 @@
       activityTracker.recordActivity();
     }
   }
-  
+
   // Function to handle connection status changes
   function handleConnectionChange(connected: boolean) {
     console.debug(`Connection status changed to: ${connected}`);
     isConnected = connected;
-    
+
     // If connection restored and we were in a conversation
     if (connected && chatState.stage === 'welcome' && chatState.messages.length > 0) {
-      addMessage('assistant', 'Connection restored! You can continue using the Analytics Assistant.');
+      addMessage(
+        'assistant',
+        'Connection restored! You can continue using the Analytics Assistant.'
+      );
       chatState.stage = 'initial';
     }
   }
-  
+
   // Function to handle inactivity timeout
   function handleInactivityTimeout() {
     console.debug('Inactivity timeout reached');
@@ -75,17 +83,17 @@
       content =
         "Sorry, I couldn't process that request due to an unexpected response. Please try again.";
     }
-    
+
     // Get the last message content for duplicate checking
     const lastMessage = chatState.messages[chatState.messages.length - 1];
     const lastMessageContent = lastMessage ? lastMessage.content : undefined;
-    
+
     // Prevent adding duplicate connection error messages
     if (role === 'assistant' && !shouldAddConnectionErrorMessage(content, lastMessageContent)) {
       console.debug('Skipping duplicate connection error message');
       return;
     }
-    
+
     const newMessage: Message = {
       id: v7(),
       role,
@@ -310,7 +318,8 @@
     // Check connection status before attempting the API call
     if (!isConnected) {
       // Check if there's already a connection error message to avoid duplicates
-      const connectionErrorMsg = 'Cannot connect to the service. Please check your network connection and try again later.';
+      const connectionErrorMsg =
+        'Cannot connect to the service. Please check your network connection and try again later.';
       addMessage('assistant', connectionErrorMsg);
       chatState.loading = false; // Ensure loading is off
       chatState.stage = 'welcome'; // Move to welcome stage so user can restart
@@ -416,17 +425,20 @@
       logDebug: console.debug,
       logError: console.error
     });
-    
+
     // Start tracking activity
     activityTracker.startInactivityTimer();
     activityTracker.attachActivityListeners();
-    
+
     // Initial connection status
     isConnected = activityTracker.getConnectionStatus();
-    
+
     // Check if we need to show a warning about connection
     if (!isConnected && chatState.messages.length > 0 && chatState.stage !== 'welcome') {
-      addMessage('assistant', 'Warning: Cannot connect to the Analytics service. The chat functionality may be limited until connection is restored.');
+      addMessage(
+        'assistant',
+        'Warning: Cannot connect to the Analytics service. The chat functionality may be limited until connection is restored.'
+      );
       chatState.stage = 'welcome';
     }
 
@@ -451,8 +463,8 @@
 
 <div class="flex flex-col h-full w-full" data-testid="chat-container">
   <!-- Connection status indicator -->
-  <ConnectionStatusBanner 
-    isConnected={isConnected} 
+  <ConnectionStatusBanner
+    {isConnected}
     serviceType="analytics"
     onRetry={async () => {
       if (activityTracker) {
@@ -468,7 +480,7 @@
       return false;
     }}
   />
-  
+
   <div
     class="flex-grow overflow-y-auto bg-gradient-to-b-gray-white chat-container custom-scrollbar"
     on:wheel={(e) => e.stopPropagation()}
@@ -476,187 +488,85 @@
   >
     <div class="px-3 md:px-6 lg:px-8 pt-4 pb-16 w-full">
       {#if chatState.messages.length === 0}
-        <div class="flex flex-col items-center justify-center py-20 w-full">
-          <div class="flex flex-col items-center">
-            <div class="rounded-full bg-gradient-to-br-blue-teal shadow mb-8">
-              <div
-                class="logo-circle flex items-center justify-center text-white text-5xl font-bold"
-              >
-                T
-              </div>
-            </div>
-            <h2 class="text-3xl font-bold mb-4 text-center gradient-text">
-              Teleme Analytics Assistant
-            </h2>
-            <p class="text-gray-600 mb-8 text-base max-w-xl text-center">
-              Your intelligent healthcare analytics partner,
-              <br />
-              providing insights from your medical data
-            </p>
-            <div class="flex justify-center">
-              <button
-                on:click={startConversation}
-                class="btn-gradient-large py-3 px-8 rounded-full shadow"
-              >
-                <div class="flex items-center justify-center">
-                  <span class="text-xl">🚀</span>
-                  <span class="text-base font-medium mx-2"> Start New Conversation </span>
-                </div>
-              </button>
-            </div>
-          </div>
-        </div>
+        <!-- Welcome screen for empty state -->
+        <WelcomeScreen
+          title="Teleme Analytics Assistant"
+          subtitle="Your intelligent healthcare analytics partner, providing insights from your medical data"
+          buttonText="Start New Conversation"
+          on:start={startConversation}
+        />
       {/if}
 
-      {#each chatState.messages as msg (msg.id)}
-        <div class="mb-8">
-          <div class="text-sm mb-1 {msg.role === 'user' ? 'text-right' : 'text-left'}">
-            <span class="text-gray-500 font-medium">
-              {msg.role === 'user' ? 'You' : 'Assistant'}
-            </span>
-          </div>
-          <ChatMessage message={msg} />
-        </div>
-      {/each}
+      {#if chatState.messages.length > 0}
+        <!-- Message list component -->
+        <MessageList messages={chatState.messages} userName="You" assistantName="Assistant" />
+      {/if}
 
       {#if !chatState.loading}
         {#if chatState.stage !== 'welcome' && chatState.stage !== 'question'}
-          {#if chatState.stage === 'initial'}
-            <div class="mt-4">
-              <OptionsButtons
-                buttons={menuConfig.menuButtons.main as OptionsButtonType[]}
-                onSelect={handleInitialOption}
-              />
-            </div>
-          {:else if chatState.stage === 'asking_duration'}
-            <div class="mt-4">
-              <div class="flex items-center justify-center">
-                <div class="relative mr-3">
-                  <input
-                    type="number"
-                    bind:value={durationInput}
-                    min="1"
-                    max="60"
-                    class="input-number border rounded-lg px-4 py-2 w-24 text-center font-medium {durationError
-                      ? 'border-red-500'
-                      : 'border-gray-300'}"
-                    placeholder="12"
-                  />
-                </div>
-                <button
-                  on:click={handleDurationSubmit}
-                  class="btn-gradient text-white font-semibold py-2 px-5 rounded-full shadow"
-                >
-                  <div class="flex items-center justify-center">
-                    <span class="text-base">✅</span>
-                    <span class="font-medium text-sm mx-1"> Submit </span>
-                  </div>
-                </button>
-              </div>
-              {#if durationError}
-                <div class="text-red-500 text-sm mt-2 text-center">
-                  {durationError}
-                </div>
-              {/if}
-            </div>
-          {:else}
-            <div class="mt-4">
-              <OptionsButtons
-                buttons={menuConfig.menuButtons.conversation as OptionsButtonType[]}
-                onSelect={handlePostResponseOption}
-              />
-            </div>
-          {/if}
+          <!-- Options panel using the new ChatOptions component -->
+          <ChatOptions
+            stage={chatState.stage}
+            buttons={chatState.stage === 'initial'
+              ? (menuConfig.menuButtons.main as OptionsButtonType[])
+              : chatState.stage === 'summary'
+                ? (menuConfig.menuButtons.conversation as OptionsButtonType[])
+                : []}
+            {durationInput}
+            {durationError}
+            hasMessages={chatState.messages.length > 0}
+            loading={chatState.loading}
+            on:select={(e) => {
+              if (chatState.stage === 'initial') {
+                handleInitialOption(e.detail);
+              } else if (chatState.stage === 'summary') {
+                handlePostResponseOption(e.detail);
+              }
+            }}
+            on:submit={() => handleDurationSubmit()}
+          />
         {/if}
 
         {#if chatState.stage === 'welcome' && chatState.messages.length > 0}
           <div class="flex justify-center mt-6">
-            <!-- If we're not connected, show the Try Again button with connection check -->
-            {#if !isConnected}
-              <button
-                on:click={(e) => {
-                  // Visual feedback
-                  const btn = e.currentTarget as HTMLButtonElement;
-                  const originalInnerHTML = btn.innerText;
-                  btn.innerText = 'Checking Connection...';
-                  btn.disabled = true;
-                  
-                  // Check connection using the activity tracker
-                  if (activityTracker) {
-                    activityTracker.retryConnection().then((online) => {
-                    isConnected = online;
-                    // Reset button
-                    setTimeout(() => {
-                      btn.innerText = originalInnerHTML;
-                      btn.disabled = false;
-                    }, 1000);
-                    
+            <button
+              on:click={() => {
+                if (!isConnected && activityTracker) {
+                  // Check connection first
+                  activityTracker.retryConnection().then((online) => {
                     if (online) {
-                      // If connected, start a new conversation
                       startConversation();
                     }
-                    // If not connected, do nothing - the connection banner will still show
-                    });
-                  }
-                }}
-                class="btn-gradient text-white font-semibold py-3 px-8 rounded-full shadow"
-              >
-                Try Again
-              </button>
-            {:else}
-              <button
-                on:click={startConversation}
-                class="btn-gradient text-white font-semibold py-3 px-8 rounded-full shadow"
-              >
-                Start New Conversation
-              </button>
-            {/if}
+                  });
+                } else {
+                  startConversation();
+                }
+              }}
+              class="btn-gradient text-white font-semibold py-3 px-8 rounded-full shadow"
+            >
+              {isConnected ? 'Start New Conversation' : 'Try Again'}
+            </button>
           </div>
         {/if}
       {/if}
 
       {#if chatState.loading}
         <div class="flex justify-center items-center my-6">
-          <div class="thinking-loader">
-            <div class="thinking-inline">
-              <span class="thinking-text">Processing</span>
-              <div class="thinking-dots-inline">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-            </div>
-          </div>
+          <LoadingIndicator state="processing" centered={true} />
         </div>
       {/if}
       <div bind:this={chatEndRef}></div>
       <div class="h-20"></div>
 
-      {#if isScrolledAway && chatState.messages.length > 0}
-        <button
-          on:click={scrollToBottom}
-          class="fixed bottom-20 right-6 bg-gradient-to-br from-blue-500 to-teal-400 text-white p-3 rounded-full shadow-lg transition-all duration-300 hover:shadow-xl scroll-to-bottom-button"
-          aria-label="Scroll to bottom"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-5 w-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M19 14l-7 7m0 0l-7-7m7 7V3"
-            />
-          </svg>
-        </button>
-      {/if}
+      <!-- Scroll to bottom button -->
+      <ScrollToBottomButton
+        isVisible={isScrolledAway && chatState.messages.length > 0}
+        on:scroll={scrollToBottom}
+      />
     </div>
   </div>
 
+  <!-- Chat input for question stage -->
   {#if chatState.stage === 'question'}
     <div class="w-full border-t border-gray-200 bg-white shadow-md">
       <div class="px-4 md:px-8 lg:px-12 py-3 w-full">

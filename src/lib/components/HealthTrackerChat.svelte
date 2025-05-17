@@ -4,11 +4,17 @@
   import { logError, logDebug } from '$lib/utils/secureLogger';
   import { n8nService } from '$lib/services';
   import { ActivityTracker, shouldAddConnectionErrorMessage } from '$lib/utils/activityUtils';
+
+  // Common components
   import ConnectionStatusBanner from './common/ConnectionStatusBanner.svelte';
-  import { TIMEOUTS, ENDPOINTS, CONNECTION_CHECK_TIMEOUT, UI_TEXT } from '$lib/config/chatConfig';
-  import ChatMessage from './ChatMessage.svelte';
-  import OptionsButtons from './OptionsButtons.svelte';
+  import MessageList from './common/MessageList.svelte';
+  import LoadingIndicator from './common/LoadingIndicator.svelte';
+  import ChatOptions from './common/ChatOptions.svelte';
+  import ScrollToBottomButton from './common/ScrollToBottomButton.svelte';
   import ChatInput from './ChatInput.svelte';
+
+  // Config
+  import { TIMEOUTS, ENDPOINTS, CONNECTION_CHECK_TIMEOUT, UI_TEXT } from '$lib/config/chatConfig';
   // Use centralized config values
   const HEALTH_TRACKER_TIMEOUT = TIMEOUTS.healthTracker;
 
@@ -39,7 +45,7 @@
   let isConnected = true; // Connection status flag, will be verified on mount
   let loadingState: LoadingState = 'idle';
   let sessionId = uuidv7();
-  let selectedPeriod = 1;
+  // Note: used in fetchDataFromN8n
   let isScrolledAway = false;
   let initialFetchDone = false;
 
@@ -109,19 +115,22 @@
       activityTracker.recordActivity();
     }
   };
-  
+
   // Function to handle connection status changes
   const handleConnectionChange = (connected: boolean) => {
     logDebug(`Connection status changed to: ${connected}`);
     isConnected = connected;
-    
+
     // If connection restored and we were in error state
     if (connected && chatState.stage === 'error') {
       chatState.stage = 'post_response';
-      addMessage('assistant', 'Connection to the Health Tracker service has been restored. You can continue your session.');
+      addMessage(
+        'assistant',
+        'Connection to the Health Tracker service has been restored. You can continue your session.'
+      );
     }
   };
-  
+
   // Function to handle inactivity timeout
   const handleInactivityTimeout = () => {
     logDebug('Inactivity timeout reached');
@@ -153,9 +162,12 @@
     // Get the last message content for duplicate checking
     const lastMessage = chatState.messages[chatState.messages.length - 1];
     const lastMessageContent = lastMessage ? lastMessage.content : undefined;
-    
+
     // Prevent adding duplicate connection error messages
-    if (role === 'assistant' && !shouldAddConnectionErrorMessage(finalContent.toString(), lastMessageContent)) {
+    if (
+      role === 'assistant' &&
+      !shouldAddConnectionErrorMessage(finalContent.toString(), lastMessageContent)
+    ) {
       logDebug('Skipping duplicate connection error message');
       return;
     }
@@ -219,25 +231,29 @@
 
     // Check connection status using the activity tracker
     const connectionStatus = activityTracker ? await activityTracker.checkConnection() : false;
-    
+
     if (!connectionStatus) {
       logError('Connection check failed, cannot fetch data.');
       isConnected = false; // Update connection status flag
       // Only add message if we don't already have a connection error message
       const lastMsg = chatState.messages[chatState.messages.length - 1];
-      const connectionErrorMsg = 'Cannot connect to the Health Tracker service. Please check your network connection and try again later.';
-      
-      if (!lastMsg || typeof lastMsg.content !== 'string' || 
-          !lastMsg.content.includes('Cannot connect to the Health Tracker service')) {
+      const connectionErrorMsg =
+        'Cannot connect to the Health Tracker service. Please check your network connection and try again later.';
+
+      if (
+        !lastMsg ||
+        typeof lastMsg.content !== 'string' ||
+        !lastMsg.content.includes('Cannot connect to the Health Tracker service')
+      ) {
         addMessage('assistant', connectionErrorMsg);
       }
-      
+
       chatState.loading = false;
       loadingState = 'idle';
       chatState.stage = 'error'; // Move to error stage if not connected
       return;
     }
-    
+
     // If we reached here, we're connected
     isConnected = true;
 
@@ -355,18 +371,18 @@
     // Perform a connection check immediately when starting a new conversation
     if (activityTracker) {
       activityTracker.retryConnection().then((online) => {
-      isConnected = online;
-      if (!online) {
-        logError('Connection check failed after starting new conversation.');
-        addMessage(
-          'assistant',
-          'Cannot connect to the Health Tracker service. Please check your network connection and try again later.'
-        );
-        chatState.stage = 'error'; // Set to error stage if not connected
-      } else {
-        logDebug('Connection re-established after starting new conversation.');
-        // No message needed, user can now select a date range
-      }
+        isConnected = online;
+        if (!online) {
+          logError('Connection check failed after starting new conversation.');
+          addMessage(
+            'assistant',
+            'Cannot connect to the Health Tracker service. Please check your network connection and try again later.'
+          );
+          chatState.stage = 'error'; // Set to error stage if not connected
+        } else {
+          logDebug('Connection re-established after starting new conversation.');
+          // No message needed, user can now select a date range
+        }
       });
     }
   };
@@ -403,11 +419,10 @@
     recordActivity();
     
     // Check connection before processing
-    if (!isConnected) {
-      const n8nEndpoint = import.meta.env.VITE_N8N_HEALTH_TRACKER_WEBHOOK_URL || '';
-      const connectionStatus = await checkConnectionStatus(n8nEndpoint, CONNECTION_CHECK_TIMEOUT);
+    if (!isConnected && activityTracker) {
+      const connectionStatus = await activityTracker.checkConnection();
       isConnected = connectionStatus;
-      
+
       if (!connectionStatus) {
         addMessage(
           'assistant',
@@ -417,7 +432,7 @@
         return;
       }
     }
-    
+
     let period = 1;
     if (option === '1month') period = 1;
     else if (option === '3months') period = 3;
@@ -435,7 +450,7 @@
       const n8nEndpoint = import.meta.env.VITE_N8N_HEALTH_TRACKER_WEBHOOK_URL || '';
       const connectionStatus = await checkConnectionStatus(n8nEndpoint, CONNECTION_CHECK_TIMEOUT);
       isConnected = connectionStatus;
-      
+
       if (!connectionStatus && id !== 'end') {
         addMessage(
           'assistant',
@@ -481,25 +496,29 @@
 
     // Check connection status using the activity tracker
     const connectionStatus = activityTracker ? await activityTracker.checkConnection() : false;
-    
+
     if (!connectionStatus) {
       logError('Connection check failed, cannot send question.');
       isConnected = false; // Update connection status flag
       // Only add message if we don't already have a connection error message
       const lastMsg = chatState.messages[chatState.messages.length - 1];
-      const connectionErrorMsg = 'Cannot connect to the Health Tracker service. Please check your network connection and try again later.';
-      
-      if (!lastMsg || typeof lastMsg.content !== 'string' || 
-          !lastMsg.content.includes('Cannot connect to the Health Tracker service')) {
+      const connectionErrorMsg =
+        'Cannot connect to the Health Tracker service. Please check your network connection and try again later.';
+
+      if (
+        !lastMsg ||
+        typeof lastMsg.content !== 'string' ||
+        !lastMsg.content.includes('Cannot connect to the Health Tracker service')
+      ) {
         addMessage('assistant', connectionErrorMsg);
       }
-      
+
       chatState.loading = false;
       loadingState = 'idle';
       chatState.stage = 'error'; // Move to error stage if not connected
       return;
     }
-    
+
     // If we reached here, we're connected
     isConnected = true;
 
@@ -587,46 +606,7 @@
     }
   };
 
-  // Helper function to render the loading indicator HTML string
-  const renderLoadingIndicator = () => {
-    const stateText =
-      loadingState === 'connecting'
-        ? 'Connecting'
-        : loadingState === 'processing'
-          ? 'Processing data'
-          : loadingState === 'analyzing'
-            ? 'Analyzing results'
-            : loadingState === 'finalizing'
-              ? 'Preparing response'
-              : 'Processing';
-
-    const stateIcon =
-      loadingState === 'connecting'
-        ? '🔄'
-        : loadingState === 'processing'
-          ? '⚙️'
-          : loadingState === 'analyzing'
-            ? '🔍'
-            : loadingState === 'finalizing'
-              ? '📊'
-              : '';
-
-    return `
-    <div class="thinking-loader">
-      <div class="thinking-inline">
-        <span class="thinking-text flex items-center">
-          ${stateText}
-          <span class="ml-2">
-            ${stateIcon}
-          </span>
-          <div class="thinking-dots-inline ml-1">
-            <span></span><span></span><span></span>
-          </div>
-        </span>
-      </div>
-    </div>
-  `;
-  };
+  // Removed renderLoadingIndicator function as we now use the LoadingIndicator component
 
   onMount(() => {
     if (!initialFetchDone) {
@@ -634,8 +614,8 @@
       addMessage('assistant', 'Please select a date range:');
     }
 
-    const n8nEndpoint = ENDPOINTS.healthTracker;
-    
+    // Endpoint is now used directly in the ActivityTracker config below
+
     // Initialize the activity tracker with config values
     activityTracker = new ActivityTracker({
       timeoutMinutes: HEALTH_TRACKER_TIMEOUT,
@@ -646,14 +626,14 @@
       logDebug: logDebug,
       logError: logError
     });
-    
+
     // Start tracking activity
     activityTracker.startInactivityTimer();
     activityTracker.attachActivityListeners(chatContainerRef);
-    
+
     // Initial connection status
     isConnected = activityTracker.getConnectionStatus();
-    
+
     // Additional component-specific event listener for scroll events
     chatContainerRef?.addEventListener('scroll', handleScrollEvent);
 
@@ -703,8 +683,8 @@
 
 <div class="flex flex-col h-full w-full">
   <!-- Connection status indicator -->
-  <ConnectionStatusBanner 
-    isConnected={isConnected} 
+  <ConnectionStatusBanner
+    {isConnected}
     serviceType="healthTracker"
     onRetry={async () => {
       if (activityTracker) {
@@ -726,128 +706,69 @@
       return false;
     }}
   />
-  
+
   <div
     bind:this={chatContainerRef}
     class="flex flex-col flex-grow overflow-y-auto bg-gradient-to-b-gray-white"
     on:scroll={handleScrollEvent}
   >
     <div class="px-3 md:px-6 lg:px-8 pt-4 pb-16 w-full">
-      {#each chatState.messages as msg (msg.id)}
-        <div class="mb-8">
-          <div class={`text-sm mb-1 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-            <span class="text-gray-500 font-medium">
-              {msg.role === 'user' ? userName : 'Health Assistant'}
-            </span>
-          </div>
-          <ChatMessage message={msg} />
-        </div>
-      {/each}
+      <!-- Message list component -->
+      <MessageList messages={chatState.messages} {userName} assistantName="Health Assistant" />
 
+      <!-- Loading indicator for empty state -->
       {#if chatState.messages.length === 0 && chatState.loading}
         <div class="flex flex-col items-center justify-center py-20 w-full">
-          {@html renderLoadingIndicator()}
+          <LoadingIndicator state={loadingState} centered={true} />
         </div>
       {/if}
 
+      <!-- Options panel -->
       {#if !chatState.loading}
         {#if chatState.stage !== 'question'}
-          <div class="mt-4">
-            {#if chatState.stage === 'welcome'}
-              <div class="flex justify-center my-4">
-                <button
-                  class="btn btn-primary flex items-center px-6 py-3 rounded-full btn-gradient"
-                  on:click={startNewConversation}
-                >
-                  <div class="flex items-center justify-center">
-                    <span class="text-base">👋</span>
-                    <span class="font-medium text-sm mx-2">Start New Conversation</span>
-                  </div>
-                </button>
-              </div>
-            {:else if chatState.stage === 'date_selection'}
-              <OptionsButtons
-                buttons={DATE_RANGE_BUTTONS}
-                onSelect={(id) => handleDateRangeSelection(id)}
-              />
-            {:else if chatState.stage === 'post_response'}
-              <OptionsButtons buttons={POST_RESPONSE_BUTTONS} onSelect={handlePostResponseOption} />
-            {:else if chatState.stage === 'error'}
-              <div class="flex justify-center my-4">
-                <button
-                  class="btn btn-primary flex items-center px-6 py-3 rounded-full btn-gradient"
-                  on:click={(e) => {
-                    // Visual feedback
-                    const btn = e.currentTarget as HTMLButtonElement;
-                    const originalInnerHTML = btn.innerHTML;
-                    btn.innerHTML = '<div class="flex items-center justify-center"><span class="text-base">🔄</span><span class="font-medium text-sm mx-2">Checking...</span></div>';
-                    btn.disabled = true;
-                    
-                    // Check connection first using activity tracker
-                    if (activityTracker) {
-                      activityTracker.retryConnection().then((online) => {
-                      isConnected = online;
-                      // Reset button
-                      setTimeout(() => {
-                        btn.innerHTML = originalInnerHTML;
-                        btn.disabled = false;
-                      }, 1000);
-                      
-                      if (online) {
-                        // If connected, start a new conversation
-                        startNewConversation();
-                      }
-                      // If not connected, do nothing - the connection banner will still show
-                      });
-                    }
-                  }}
-                >
-                  <div class="flex items-center justify-center">
-                    <span class="text-base">🔄</span>
-                    <span class="font-medium text-sm mx-2">Try Again</span>
-                  </div>
-                </button>
-              </div>
-            {/if}
-          </div>
+          <ChatOptions
+            stage={chatState.stage}
+            buttons={chatState.stage === 'date_selection'
+              ? DATE_RANGE_BUTTONS
+              : chatState.stage === 'post_response'
+                ? POST_RESPONSE_BUTTONS
+                : []}
+            hasMessages={chatState.messages.length > 0}
+            loading={chatState.loading}
+            on:select={(e) => {
+              if (chatState.stage === 'date_selection') {
+                handleDateRangeSelection(e.detail);
+              } else if (chatState.stage === 'post_response') {
+                handlePostResponseOption(e.detail);
+              }
+            }}
+            on:startNew={() => startNewConversation()}
+          />
         {/if}
       {/if}
 
+      <!-- Loading indicator during ongoing conversation -->
       {#if chatState.loading && chatState.messages.length > 0}
         <div class="flex justify-center items-center my-6">
-          {@html renderLoadingIndicator()}
+          <LoadingIndicator state={loadingState} centered={true} />
         </div>
       {/if}
 
+      <!-- Reference for scrolling to bottom -->
       <div bind:this={chatEndRef}></div>
       <div class="h-20"></div>
       <!-- Spacer for scroll -->
 
-      {#if isScrolledAway && chatState.messages.length > 0}
-        <button
-          class="fixed bottom-28 right-4 md:right-8 lg:right-12 bg-blue-500 text-white p-3 rounded-full shadow-lg transition-opacity duration-300 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-          on:click={scrollToBottom}
-          aria-label="Scroll to latest message"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M19 14l-7 7m0 0l-7-7m7 7V3"
-            />
-          </svg>
-        </button>
-      {/if}
+      <!-- Scroll to bottom button -->
+      <ScrollToBottomButton
+        isVisible={isScrolledAway && chatState.messages.length > 0}
+        position="chat"
+        on:scroll={scrollToBottom}
+      />
     </div>
   </div>
 
+  <!-- Chat input for question stage -->
   {#if chatState.stage === 'question'}
     <div class="w-full border-t border-gray-200 bg-white shadow-md">
       <div class="px-4 md:px-8 lg:px-12 py-3 w-full">
@@ -858,64 +779,6 @@
 </div>
 
 <style>
-  /* Base styles for the thinking indicator */
-  :global(.thinking-loader) {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-  }
-
-  :global(.thinking-inline) {
-    display: flex;
-    align-items: center;
-  }
-
-  :global(.thinking-text) {
-    font-size: 0.875rem; /* text-sm */
-    color: #6b7280; /* text-gray-500 */
-    margin-right: 0.5rem; /* mr-2 */
-  }
-
-  /* Styles for the pulsing dots */
-  :global(.thinking-dots-inline) {
-    display: flex;
-    align-items: center;
-    height: 1em; /* Match text height */
-  }
-
-  :global(.thinking-dots-inline span) {
-    display: inline-block;
-    width: 6px; /* Adjust size as needed */
-    height: 6px; /* Adjust size as needed */
-    background-color: #6b7280; /* Match text color */
-    border-radius: 50%;
-    margin: 0 2px; /* Space between dots */
-    animation: pulse 1.4s infinite ease-in-out both;
-  }
-
-  :global(.thinking-dots-inline span:nth-child(1)) {
-    animation-delay: -0.32s;
-  }
-
-  :global(.thinking-dots-inline span:nth-child(2)) {
-    animation-delay: -0.16s;
-  }
-
-  /* Keyframes for the pulse animation */
-  @keyframes pulse {
-    0%,
-    80%,
-    100% {
-      opacity: 0;
-      transform: scale(0);
-    }
-    40% {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-
   /* Gradient button styles */
   :global(.btn-gradient) {
     background-image: linear-gradient(

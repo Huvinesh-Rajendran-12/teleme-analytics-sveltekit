@@ -1,11 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { goto } from '$app/navigation'; 
+  import { goto } from '$app/navigation';
   import { getStoredAdminToken } from '$lib/utils/auth';
   import { logDebug } from '$lib/utils/secureLogger';
   import AdminDashboard from '$lib/components/admin/AdminDashboard.svelte';
   import AdminLayout from '$lib/components/admin/AdminLayout.svelte';
-  import { fade, fly } from 'svelte/transition';
+  import { fade } from 'svelte/transition';
 
   // Check if admin is logged in
   onMount(() => {

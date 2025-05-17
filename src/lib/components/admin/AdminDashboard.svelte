@@ -124,43 +124,6 @@
     logDebug('AdminDashboard component mounted - fetching stats');
     fetchStats();
   });
-
-  // Helper functions for styling and visuals
-  function getStatCardStyle(type: string) {
-    if (type === 'analytics') {
-      return 'border-blue-200 bg-gradient-to-br from-blue-50 to-white';
-    } else if (type === 'health') {
-      return 'border-green-200 bg-gradient-to-br from-green-50 to-white';
-    } else {
-      return 'border-purple-200 bg-gradient-to-br from-purple-50 to-white';
-    }
-  }
-
-  function getIconBgStyle(type: string) {
-    if (type === 'analytics') {
-      return 'bg-blue-100';
-    } else if (type === 'health') {
-      return 'bg-green-100';
-    } else {
-      return 'bg-purple-100';
-    }
-  }
-
-  function getIconColorStyle(type: string) {
-    if (type === 'analytics') {
-      return '#2563eb'; // blue-600
-    } else if (type === 'health') {
-      return '#16a34a'; // green-600
-    } else {
-      return '#9333ea'; // purple-600
-    }
-  }
-
-  function getTabButtonStyle(tab: string) {
-    return activeTab === tab
-      ? 'bg-blue-600 text-white'
-      : 'bg-white text-gray-600 hover:bg-gray-100';
-  }
 </script>
 
 <div class="max-w-7xl mx-auto" in:fade={{ duration: 300, delay: 100 }}>

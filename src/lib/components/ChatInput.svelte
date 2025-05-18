@@ -70,11 +70,12 @@
 
     <button
       on:click={handleSend}
-      class="ml-2 mb-2 p-2 rounded-full bg-green-500 text-white focus:outline-none hover:bg-green-600 disabled:opacity-50 disabled:pointer-events-none"
+      class="ml-2 mb-2 p-2 rounded-full send-button text-white focus:outline-none hover:send-button-hover disabled:opacity-50 disabled:pointer-events-none relative overflow-hidden"
       disabled={inputMessage.trim() === '' || disabled || charsOverLimit > 0}
       aria-label="Send message"
     >
-      <Icon name="send" size={20} />
+      <span class="relative z-10"><Icon name="send" size={20} /></span>
+      <span class="send-wave"></span>
     </button>
   </div>
   {#if maxLength !== undefined}
@@ -91,5 +92,42 @@
   textarea {
     font-size: 0.95rem;
     line-height: 1.5;
+  }
+  
+  .send-button {
+    background-color: var(--color-teal-500, #26A69A);
+  }
+  
+  .send-button:hover {
+    background-color: var(--color-teal-600, #00897B);
+  }
+  
+  .send-wave {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 70%);
+    border-radius: inherit;
+    opacity: 0;
+    transform: scale(0);
+    z-index: 0;
+    pointer-events: none;
+  }
+  
+  button:not(:disabled):hover .send-wave {
+    animation: ripple 1s cubic-bezier(0, 0, 0.2, 1);
+  }
+  
+  @keyframes ripple {
+    0% {
+      transform: scale(0);
+      opacity: 0.7;
+    }
+    100% {
+      transform: scale(2.5);
+      opacity: 0;
+    }
   }
 </style>

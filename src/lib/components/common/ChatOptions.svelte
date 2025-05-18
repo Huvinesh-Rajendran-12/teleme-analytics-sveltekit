@@ -68,13 +68,14 @@
       </div>
       <button
         on:click={handleDurationSubmit}
-        class="btn-gradient text-white font-semibold py-2 px-5 rounded-full shadow"
+        class="pulse-button text-white font-semibold py-2 px-5 rounded-full shadow relative overflow-hidden"
         disabled={loading}
       >
-        <div class="flex items-center justify-center">
-          <span class="text-base">✅</span>
-          <span class="font-medium text-sm mx-1"> Submit </span>
+        <div class="flex items-center justify-center relative z-10">
+          <span class="font-medium text-sm"> Continue </span>
+          <span class="ml-1">→</span>
         </div>
+        <span class="pulse-wave"></span>
       </button>
     </div>
     {#if durationError}
@@ -103,9 +104,53 @@
     border: none;
   }
   
+  /* Pulse button styles */
+  .pulse-button {
+    background-color: var(--color-teal-500, #26A69A);
+    transition: all 0.3s ease;
+    transform: translateZ(0);
+  }
+  
+  .pulse-button:hover {
+    background-color: var(--color-teal-600, #00897B);
+  }
+  
+  .pulse-wave {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: inherit;
+    opacity: 0;
+    transform: scale(1);
+    z-index: 0;
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0% {
+      opacity: 0.5;
+      transform: scale(1);
+    }
+    70% {
+      opacity: 0;
+      transform: scale(1.5);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(1.5);
+    }
+  }
+  
   /* Disabled state */
   button:disabled {
     opacity: 0.7;
     cursor: not-allowed;
+  }
+  
+  button:disabled .pulse-wave {
+    animation: none;
   }
 </style>

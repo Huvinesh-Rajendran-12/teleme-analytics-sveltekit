@@ -153,8 +153,15 @@
       loading: false
     };
 
+    // Clean up inactivity timer
     if (inactivityTimerRef) {
       clearInterval(inactivityTimerRef);
+      inactivityTimerRef = undefined;
+    }
+    
+    // Clean up the activity tracker to stop monitoring events
+    if (activityTracker) {
+      activityTracker.cleanup();
     }
   }
 
@@ -305,6 +312,17 @@
       case 'end':
         addMessage('assistant', 'Thank you for using our service. The conversation has ended.');
         chatState = { ...chatState, stage: 'welcome' };
+        
+        // Clean up inactivity timer when user ends conversation manually
+        if (inactivityTimerRef) {
+          clearInterval(inactivityTimerRef);
+          inactivityTimerRef = undefined;
+        }
+        
+        // Clean up the activity tracker when user ends conversation manually
+        if (activityTracker) {
+          activityTracker.cleanup();
+        }
         break;
       case 'question':
         console.log('Setting stage to question');

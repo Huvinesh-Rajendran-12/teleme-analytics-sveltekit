@@ -127,6 +127,10 @@ export class ActivityTracker {
       window.clearInterval(this.inactivityTimerId);
       this.inactivityTimerId = null;
     }
+    
+    // Remove any attached event listeners to prevent memory leaks
+    this.removeActivityListeners();
+    
     this.options.logDebug?.('Activity tracker cleaned up');
   }
 

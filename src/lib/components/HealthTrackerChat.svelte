@@ -437,7 +437,8 @@
     if (option === '1month') period = 1;
     else if (option === '3months') period = 3;
     else if (option === '6months') period = 6;
-    selectedPeriod = period;
+    
+    logDebug(`Fetching data for period: ${period} months`);
     fetchDataFromN8n(period);
   };
 

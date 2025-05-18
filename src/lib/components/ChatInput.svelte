@@ -1,10 +1,14 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { Icon } from '$lib/icons';
   
   export let disabled = false;
   export let onSendQuestion: (message: string) => void;
   export let maxLength: number | undefined = undefined;
-  // console.log("onSendQuestion prop:", onSendQuestion);
+
+  onMount(() => {
+    console.log('ChatInput component mounted');
+  });
 
   let inputMessage = '';
   let inputElement: HTMLTextAreaElement;

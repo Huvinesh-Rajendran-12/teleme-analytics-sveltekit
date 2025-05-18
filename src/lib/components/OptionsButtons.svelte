@@ -30,6 +30,7 @@ function getIconName(iconEmoji: string): string {
 
 // Handle button click
 function handleSelect(id: string) {
+  console.log('Option button clicked:', id);
   onSelect(id);
 }
 </script>

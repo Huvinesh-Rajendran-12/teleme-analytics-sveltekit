@@ -6,8 +6,10 @@
   import type { OptionsButtonType } from '$lib/types';
   import { n8nService } from '$lib/services/n8nService';
   import { ActivityTracker, shouldAddConnectionErrorMessage } from '$lib/utils/activityUtils';
-  import { TIMEOUTS, ENDPOINTS, CONNECTION_CHECK_TIMEOUT, UI_TEXT } from '$lib/config/chatConfig';
+  import { TIMEOUTS, ENDPOINTS, CONNECTION_CHECK_TIMEOUT, UI_TEXT, MAX_QUESTION_LENGTH } from '$lib/config/chatConfig';
   import type { ChatState, Message, Params } from '$lib/types';
+  
+  console.log('MAX_QUESTION_LENGTH imported as:', MAX_QUESTION_LENGTH);
 
   // Common components
   import ConnectionStatusBanner from './common/ConnectionStatusBanner.svelte';
@@ -274,33 +276,43 @@
     }
   }
 
-  function handlePostResponseOption(buttonId: string) {
+function handlePostResponseOption(buttonId: string) {
+    console.log('Post response option selected:', buttonId);
     const button = menuConfig.menuButtons.conversation.find((b) => b.id === buttonId);
-    if (!button) return;
+    if (!button) {
+      console.error('Button not found in menu config:', buttonId);
+      return;
+    }
 
     switch (buttonId) {
       case 'back':
-        chatState.stage = 'initial';
+        // Use the reactive assignment to ensure the component updates
+        chatState = {...chatState, stage: 'initial'};
         addMessage('assistant', 'What would you like to do with your data analytics?');
         break;
       case 'end':
         addMessage('assistant', 'Thank you for using our service. The conversation has ended.');
-        chatState.stage = 'welcome';
+        chatState = {...chatState, stage: 'welcome'};
         break;
       case 'question':
-        chatState.stage = 'question';
+        console.log('Setting stage to question');
+        // Use the reactive assignment for the question state
+        chatState = {...chatState, stage: 'question'};
         addMessage('assistant', 'What question would you like to ask?');
+        console.log('Current stage after update:', chatState.stage);
         break;
     }
   }
 
   async function handleSendQuestion(question: string) {
+    console.log('handleSendQuestion called with:', question.substring(0, 20) + '...');
+    
     // Removed chatInputError assignments as the variable is unused
     // Check for question length
     if (question.length > MAX_QUESTION_LENGTH) {
       console.warn(`Question exceeds max length (${MAX_QUESTION_LENGTH}): ${question}`);
       // Handle the error appropriately, e.g., show a notification, since chatInputError is not displayed
-      chatState.loading = false; // Ensure loading is off if we return early
+      chatState = {...chatState, loading: false}; // Ensure loading is off if we return early
       return;
     }
 
@@ -311,7 +323,7 @@
     if (disallowedPattern.test(question)) {
       console.warn(`Question contains disallowed pattern: ${question}`);
       // Handle the error appropriately, e.g., show a notification
-      chatState.loading = false; // Ensure loading is off
+      chatState = {...chatState, loading: false}; // Ensure loading is off
       return; // Stop execution if validation fails
     }
 
@@ -567,6 +579,7 @@
   </div>
 
   <!-- Chat input for question stage -->
+  {@html `<script>console.log('Debug stage:', '${chatState.stage}')</script>`}
   {#if chatState.stage === 'question'}
     <div class="w-full border-t border-gray-200 bg-white shadow-md">
       <div class="px-4 md:px-8 lg:px-12 py-3 w-full">
@@ -577,5 +590,8 @@
         />
       </div>
     </div>
+  {:else}
+    <!-- Log when ChatInput is NOT rendered -->
+    {@html `<script>console.log('ChatInput not rendered. Current stage:', '${chatState.stage}')</script>`}
   {/if}
 </div>

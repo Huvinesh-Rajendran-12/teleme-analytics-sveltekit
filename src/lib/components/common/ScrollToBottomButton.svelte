@@ -23,7 +23,7 @@
 {#if isVisible}
   <button
     on:click={handleClick}
-    class="fixed {positionClasses} bg-gradient-to-br from-green-300 to-teal-400 text-white p-3 rounded-full shadow-lg transition-all duration-300 hover:shadow-xl scroll-to-bottom-button"
+    class="fixed {positionClasses} bg-gradient-to-br from-green-700 to-teal-400 text-white p-3 rounded-full shadow-lg transition-all duration-300 hover:shadow-xl scroll-to-bottom-button"
     aria-label="Scroll to bottom"
   >
     <svg

@@ -4,6 +4,8 @@
   import { logError, logDebug } from '$lib/utils/secureLogger';
   import { n8nService } from '$lib/services';
   import { ActivityTracker, shouldAddConnectionErrorMessage } from '$lib/utils/activityUtils';
+  import { parseAIMessageContent } from '$lib/utils/markdownParser';
+  import { checkConnectionStatus } from '$lib/utils/connectionUtils';
 
   // Common components
   import ConnectionStatusBanner from './common/ConnectionStatusBanner.svelte';

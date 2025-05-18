@@ -79,8 +79,10 @@
     margin: 0;
   }
   
+  /* Using the standard 'appearance' property with vendor prefixes */
   .input-number {
-    -moz-appearance: textfield; /* Firefox */
+    appearance: textfield;
+    -webkit-appearance: textfield;
   }
   
   input:disabled {

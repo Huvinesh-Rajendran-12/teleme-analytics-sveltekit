@@ -1,5 +1,6 @@
 <script lang="ts">
   import OptionsButtons from '../OptionsButtons.svelte';
+  import DurationInput from './DurationInput.svelte';
   import type { OptionsButtonType } from '$lib/types';
   import { createEventDispatcher } from 'svelte';
   
@@ -33,6 +34,11 @@
   function handleDurationSubmit() {
     dispatch('submit', durationInput);
   }
+  
+  // Handle duration change
+  function handleDurationChange(event: CustomEvent<string>) {
+    durationInput = event.detail;
+  }
 </script>
 
 <div class="mt-4">
@@ -53,17 +59,15 @@
   {:else if stage === 'asking_duration'}
     <!-- Duration selection stage -->
     <div class="flex items-center justify-center">
-      <div class="relative mr-3">
-        <input
-          type="number"
-          bind:value={durationInput}
-          min="1"
-          max="60"
-          class="input-number border rounded-lg px-4 py-2 w-24 text-center font-medium {durationError
-            ? 'border-red-500'
-            : 'border-gray-300'}"
-          placeholder="12"
+      <div class="mr-3">
+        <DurationInput 
+          value={durationInput}
+          error={null} 
           disabled={loading}
+          min={1}
+          max={60}
+          on:change={handleDurationChange}
+          on:submit={handleDurationSubmit}
         />
       </div>
       <button

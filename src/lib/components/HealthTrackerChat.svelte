@@ -52,6 +52,7 @@
   // Activity tracker instance
   let activityTracker: ActivityTracker;
 
+  // No need for inactivityTimerId as it's managed by ActivityTracker
   let chatEndRef: HTMLDivElement;
   let chatContainerRef: HTMLDivElement;
 
@@ -213,9 +214,12 @@
       }
     }
 
-    if (inactivityTimerId) {
-      clearInterval(inactivityTimerId);
-      inactivityTimerId = null;
+    // Clean up inactivity timer
+    // No need to clear timer here - it's handled by activityTracker.cleanup()
+    
+    // Clean up the activity tracker to stop monitoring events
+    if (activityTracker) {
+      activityTracker.cleanup();
     }
 
     chatState = {
@@ -494,7 +498,7 @@
         addMessage('assistant', 'Please select a date range:');
       }
     } else if (id === 'end') {
-      endConversation();
+      endConversation(); // This will properly clean up the activity tracker and timers
     }
   };
 

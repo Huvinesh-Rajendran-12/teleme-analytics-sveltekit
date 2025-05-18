@@ -46,7 +46,7 @@
   // Activity tracker instance
   let activityTracker: ActivityTracker;
 
-  let inactivityTimerRef: NodeJS.Timeout | undefined;
+  // Note: inactivityTimerRef is not actually needed as ActivityTracker handles the timer
   let chatEndRef: HTMLDivElement;
   let chatContainer: HTMLDivElement;
 
@@ -152,12 +152,6 @@
       stage: 'welcome',
       loading: false
     };
-
-    // Clean up inactivity timer
-    if (inactivityTimerRef) {
-      clearInterval(inactivityTimerRef);
-      inactivityTimerRef = undefined;
-    }
     
     // Clean up the activity tracker to stop monitoring events
     if (activityTracker) {
@@ -312,12 +306,6 @@
       case 'end':
         addMessage('assistant', 'Thank you for using our service. The conversation has ended.');
         chatState = { ...chatState, stage: 'welcome' };
-        
-        // Clean up inactivity timer when user ends conversation manually
-        if (inactivityTimerRef) {
-          clearInterval(inactivityTimerRef);
-          inactivityTimerRef = undefined;
-        }
         
         // Clean up the activity tracker when user ends conversation manually
         if (activityTracker) {
@@ -609,7 +597,6 @@
   </div>
 
   <!-- Chat input for question stage -->
-  {@html `<script>console.log('Debug stage:', '${chatState.stage}')</script>`}
   {#if chatState.stage === 'question'}
     <div class="w-full border-t border-gray-200 bg-white shadow-md">
       <div class="px-4 md:px-8 lg:px-12 py-3 w-full">
@@ -620,8 +607,5 @@
         />
       </div>
     </div>
-  {:else}
-    <!-- Log when ChatInput is NOT rendered -->
-    {@html `<script>console.log('ChatInput not rendered. Current stage:', '${chatState.stage}')</script>`}
   {/if}
 </div>

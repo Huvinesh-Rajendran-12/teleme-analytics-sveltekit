@@ -172,10 +172,17 @@
       return;
     }
 
+    let processedContent = finalContent;
+
+    // Process AI message content with markdown parser
+    if (role === 'assistant') {
+      processedContent = parseAIMessageContent(finalContent);
+    }
+
     const newMessage: Message = {
       id: uuidv7(),
       role,
-      content: finalContent
+      content: processedContent
     };
 
     chatState.messages = [...chatState.messages, newMessage];

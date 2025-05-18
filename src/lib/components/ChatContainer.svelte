@@ -6,9 +6,16 @@
   import type { OptionsButtonType } from '$lib/types';
   import { n8nService } from '$lib/services/n8nService';
   import { ActivityTracker, shouldAddConnectionErrorMessage } from '$lib/utils/activityUtils';
-  import { TIMEOUTS, ENDPOINTS, CONNECTION_CHECK_TIMEOUT, UI_TEXT, MAX_QUESTION_LENGTH } from '$lib/config/chatConfig';
+  import { parseAIMessageContent } from '$lib/utils/markdownParser';
+  import {
+    TIMEOUTS,
+    ENDPOINTS,
+    CONNECTION_CHECK_TIMEOUT,
+    UI_TEXT,
+    MAX_QUESTION_LENGTH
+  } from '$lib/config/chatConfig';
   import type { ChatState, Message, Params } from '$lib/types';
-  
+
   console.log('MAX_QUESTION_LENGTH imported as:', MAX_QUESTION_LENGTH);
 
   // Common components
@@ -39,15 +46,13 @@
   // Activity tracker instance
   let activityTracker: ActivityTracker;
 
+  let inactivityTimerRef: NodeJS.Timeout | undefined;
   let chatEndRef: HTMLDivElement;
   let chatContainer: HTMLDivElement;
 
   // Scroll to bottom function
   function scrollToBottom() {
-    if (chatEndRef) {
-      chatEndRef.scrollIntoView({ behavior: 'smooth' });
-      isScrolledAway = false;
-    }
+    chatEndRef?.scrollIntoView({ behavior: 'smooth' });
   }
 
   // Function to handle user activity
@@ -96,10 +101,17 @@
       return;
     }
 
+    let processedContent = content;
+
+    // Process AI message content with markdown parser
+    if (role === 'assistant') {
+      processedContent = parseAIMessageContent(processedContent);
+    }
+
     const newMessage: Message = {
       id: v7(),
       role,
-      content
+      content: processedContent
     };
     chatState.messages = [...chatState.messages, newMessage];
     recordActivity();
@@ -276,7 +288,7 @@
     }
   }
 
-function handlePostResponseOption(buttonId: string) {
+  function handlePostResponseOption(buttonId: string) {
     console.log('Post response option selected:', buttonId);
     const button = menuConfig.menuButtons.conversation.find((b) => b.id === buttonId);
     if (!button) {
@@ -287,17 +299,17 @@ function handlePostResponseOption(buttonId: string) {
     switch (buttonId) {
       case 'back':
         // Use the reactive assignment to ensure the component updates
-        chatState = {...chatState, stage: 'initial'};
+        chatState = { ...chatState, stage: 'initial' };
         addMessage('assistant', 'What would you like to do with your data analytics?');
         break;
       case 'end':
         addMessage('assistant', 'Thank you for using our service. The conversation has ended.');
-        chatState = {...chatState, stage: 'welcome'};
+        chatState = { ...chatState, stage: 'welcome' };
         break;
       case 'question':
         console.log('Setting stage to question');
         // Use the reactive assignment for the question state
-        chatState = {...chatState, stage: 'question'};
+        chatState = { ...chatState, stage: 'question' };
         addMessage('assistant', 'What question would you like to ask?');
         console.log('Current stage after update:', chatState.stage);
         break;
@@ -306,13 +318,13 @@ function handlePostResponseOption(buttonId: string) {
 
   async function handleSendQuestion(question: string) {
     console.log('handleSendQuestion called with:', question.substring(0, 20) + '...');
-    
+
     // Removed chatInputError assignments as the variable is unused
     // Check for question length
     if (question.length > MAX_QUESTION_LENGTH) {
       console.warn(`Question exceeds max length (${MAX_QUESTION_LENGTH}): ${question}`);
       // Handle the error appropriately, e.g., show a notification, since chatInputError is not displayed
-      chatState = {...chatState, loading: false}; // Ensure loading is off if we return early
+      chatState = { ...chatState, loading: false }; // Ensure loading is off if we return early
       return;
     }
 
@@ -323,7 +335,7 @@ function handlePostResponseOption(buttonId: string) {
     if (disallowedPattern.test(question)) {
       console.warn(`Question contains disallowed pattern: ${question}`);
       // Handle the error appropriately, e.g., show a notification
-      chatState = {...chatState, loading: false}; // Ensure loading is off
+      chatState = { ...chatState, loading: false }; // Ensure loading is off
       return; // Stop execution if validation fails
     }
 

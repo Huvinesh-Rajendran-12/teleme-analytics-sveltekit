@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { parseMarkdown } from '$lib/utils/markdownParser';
 
   export let message: {
     id: string;
@@ -8,75 +9,21 @@
 
   // Function to safely convert content to string
   function getMessageContent(content: string | object): string {
-      if (typeof content === 'string') {
-        return content;
-      } else if (content && typeof content === 'object') {
-        try {
-          return JSON.stringify(content, null, 2);
-        } catch {
-          return "Error: Could not display message content.";
-        }
-      }
-      return "Unknown message format";
-    }
-
-  // Convert message content with line breaks for display
-  $: formattedContent = getMessageContent(message.content).replace(/\n/g, '<br>');
-
-  // Determine if message content has a bullet list
-  $: hasBulletList = typeof message.content === 'string' &&
-    (message.content.includes('\n- ') || message.content.includes('\n* ') ||
-     message.content.includes('\n• ') || message.content.startsWith('- ') ||
-     message.content.startsWith('* ') || message.content.startsWith('• '));
-
-  // Format messages with bullet points with proper HTML instead of <br> tags
-  function formatBulletList(content: string): string {
-    if (!hasBulletList) return content.replace(/\n/g, '<br>');
-
-    // Split into lines
-    const lines = content.split('\n');
-    let result = '';
-    let inList = false;
-
-    for (const line of lines) {
-      // Check if this line is a bullet point
-      if (line.trim().startsWith('- ') || line.trim().startsWith('* ') || line.trim().startsWith('• ')) {
-        if (!inList) {
-          // Start a new list
-          result += '<ul class="list-disc pl-4 space-y-1">';
-          inList = true;
-        }
-        // Add list item, removing the bullet character
-        const itemContent = line.trim().substring(2);
-        result += `<li>${itemContent}</li>`;
-      } else {
-        // Not a bullet point
-        if (inList) {
-          // Close the list if we were in one
-          result += '</ul>';
-          inList = false;
-        }
-
-        // Add normal line
-        if (result) {
-          result += '<br>';
-        }
-        result += line;
+    if (typeof content === 'string') {
+      return content;
+    } else if (content && typeof content === 'object') {
+      try {
+        return JSON.stringify(content, null, 2);
+      } catch {
+        return "Error: Could not display message content.";
       }
     }
-
-    // Close list if we end with a list
-    if (inList) {
-      result += '</ul>';
-    }
-
-    return result;
+    return "Unknown message format";
   }
 
-  // Determine message formatting based on content
-  $: displayContent = hasBulletList
-    ? formatBulletList(getMessageContent(message.content))
-    : formattedContent;
+  // Parse markdown content properly
+  $: rawContent = getMessageContent(message.content);
+  $: displayContent = parseMarkdown(rawContent);
 </script>
 
 <div class={`p-4 rounded-lg max-w-4xl ${message.role === 'user' ? 'bg-blue-50 ml-auto' : 'bg-white shadow-sm'}`}>
@@ -95,10 +42,23 @@
   .prose :global(ul) {
     margin-top: 0.5em;
     margin-bottom: 0.5em;
+    padding-left: 1.5em;
   }
 
   .prose :global(li) {
     margin-top: 0.25em;
     margin-bottom: 0.25em;
+  }
+
+  .prose :global(p) {
+    margin-top: 0.75em;
+    margin-bottom: 0.75em;
+  }
+
+  .prose :global(pre) {
+    padding: 0.75rem;
+    background-color: #f3f4f6;
+    border-radius: 0.25rem;
+    overflow-x: auto;
   }
 </style>

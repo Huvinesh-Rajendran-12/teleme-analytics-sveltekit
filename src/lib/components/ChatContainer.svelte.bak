@@ -101,12 +101,17 @@
       return;
     }
 
-    // We'll let ChatMessage.svelte handle the markdown parsing
-    // This prevents double-parsing and preserves whitespace correctly
+    let processedContent = content;
+
+    // Process AI message content with markdown parser
+    if (role === 'assistant') {
+      processedContent = parseAIMessageContent(processedContent);
+    }
+
     const newMessage: Message = {
       id: v7(),
       role,
-      content: content // Pass the raw content directly
+      content: processedContent
     };
     chatState.messages = [...chatState.messages, newMessage];
     recordActivity();

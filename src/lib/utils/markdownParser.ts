@@ -9,12 +9,33 @@ import { logError } from './secureLogger';
 /**
  * Default marked options for consistent markdown rendering
  */
+// Create a custom renderer to handle spacing issues
+const renderer = new marked.Renderer();
+
+// Override specific renderer methods
+renderer.paragraph = function(text: string) {
+  // Trim excessive whitespace in paragraphs
+  return '<p>' + text.trim() + '</p>';
+};
+
+renderer.list = function(body: string, ordered: boolean, start: number) {
+  const type = ordered ? 'ol' : 'ul';
+  const startAttr = ordered && start !== 1 ? ' start="' + start + '"' : '';
+  return '<' + type + startAttr + '>\n' + body.trim() + '</' + type + '>\n';
+};
+
+renderer.listitem = function(text: string) {
+  return '<li>' + text.trim() + '</li>\n';
+};
+
+// Configure marked options with the custom renderer
 const markedOptions = {
   gfm: true, // GitHub Flavored Markdown
   breaks: true, // Convert line breaks to <br>
   headerIds: false, // Don't add IDs to headers
   mangle: false, // Don't mangle email links
   sanitize: false, // We'll sanitize with DOMPurify later
+  renderer: renderer
 };
 
 /**
@@ -39,13 +60,22 @@ export function parseMarkdown(markdownText: string): string {
   try {
     if (!markdownText) return '';
     
+    // Replace multiple consecutive line breaks to avoid excessive spacing
+    const normalizedText = markdownText.replace(/\n{3,}/g, '\n\n');
+    
     // Parse markdown to HTML
-    const html = marked.parse(markdownText, markedOptions);
+    const html = marked.parse(normalizedText, markedOptions);
     
     // Sanitize the HTML to prevent XSS
     const sanitizedHtml = DOMPurify.sanitize(html, purifyOptions);
     
-    return sanitizedHtml;
+    // Further cleanup to prevent excessive spacing in the rendered HTML
+    const cleanedHtml = sanitizedHtml
+      .replace(/<p>\s*<\/p>/g, '') // Remove empty paragraphs
+      .replace(/(<br\s*\/?>){3,}/g, '<br /><br />') // Limit consecutive <br> tags
+      .replace(/\s{2,}/g, ' '); // Replace multiple spaces with a single space
+    
+    return cleanedHtml;
   } catch (error) {
     logError('Error parsing markdown:', error);
     return markdownText; // Return original text if parsing fails
@@ -124,6 +154,26 @@ export function parseAIMessageContent(message: string | Record<string, unknown> 
       }
     } else if (typeof message === 'string') {
       content = message;
+    }
+    
+    // Clean up the content - normalize whitespace before markdown parsing
+    if (typeof content === 'string') {
+      // Replace multiple spaces with a single space (except in code blocks)
+      const codeBlocks: string[] = [];
+      content = content.replace(/```([\s\S]*?)```/g, (match) => {
+        codeBlocks.push(match);
+        return `__CODE_BLOCK_${codeBlocks.length - 1}__`;
+      });
+      
+      // Clean up non-code content
+      content = content
+        .replace(/\s{2,}/g, ' ') // Replace multiple spaces with single space
+        .replace(/\n{3,}/g, '\n\n'); // Limit to max 2 consecutive line breaks
+      
+      // Restore code blocks
+      codeBlocks.forEach((block, index) => {
+        content = content.replace(`__CODE_BLOCK_${index}__`, block);
+      });
     }
     
     // Finally, parse any markdown in the content

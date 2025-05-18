@@ -147,7 +147,7 @@
       stage: 'welcome',
       loading: false
     };
-    
+
     // Clean up the activity tracker to stop monitoring events
     if (activityTracker) {
       activityTracker.cleanup();
@@ -301,7 +301,7 @@
       case 'end':
         addMessage('assistant', 'Thank you for using our service. The conversation has ended.');
         chatState = { ...chatState, stage: 'welcome' };
-        
+
         // Clean up the activity tracker when user ends conversation manually
         if (activityTracker) {
           activityTracker.cleanup();
@@ -524,7 +524,11 @@
 
       {#if chatState.messages.length > 0}
         <!-- Message list component -->
-        <MessageList messages={chatState.messages} userName="You" assistantName="Assistant" />
+        <MessageList
+          messages={chatState.messages}
+          userName="You"
+          assistantName="Analytics Assistant"
+        />
       {/if}
 
       {#if !chatState.loading}

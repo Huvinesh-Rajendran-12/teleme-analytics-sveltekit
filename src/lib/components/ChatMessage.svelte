@@ -1,11 +1,8 @@
 <script lang="ts">
   import { parseMarkdown } from '$lib/utils/markdownParser';
+  import type { Message } from '$lib/types';
 
-  export let message: {
-    id: string;
-    role: import('$lib/types').MessageRole;
-    content: string | object;
-  };
+  export let message: Message;
 
   // Function to safely convert content to string
   function getMessageContent(content: string | object): string {

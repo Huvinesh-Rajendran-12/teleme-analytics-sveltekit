@@ -14,6 +14,7 @@
   import ChatOptions from './common/ChatOptions.svelte';
   import ScrollToBottomButton from './common/ScrollToBottomButton.svelte';
   import ChatInput from './ChatInput.svelte';
+  import type { Message } from '$lib/types';
 
   // Config
   import { TIMEOUTS, ENDPOINTS, CONNECTION_CHECK_TIMEOUT, UI_TEXT } from '$lib/config/chatConfig';
@@ -23,12 +24,6 @@
   export let patientId: string | number;
   export let userId: string | number;
   export let userName: string;
-
-  type Message = {
-    id: string;
-    role: 'user' | 'assistant';
-    content: string | object;
-  };
 
   type ChatState = {
     messages: Message[];

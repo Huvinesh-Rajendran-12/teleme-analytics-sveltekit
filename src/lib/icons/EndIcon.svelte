@@ -1,6 +1,6 @@
 <script lang="ts">
   export let size = 24;
-  export let color = "#4285F4"; // Google blue color by default
+  export let color = "#26A69A"; // Teal color to match the header
   export let strokeWidth = 2;
 </script>
 
@@ -14,19 +14,45 @@
   stroke-width={strokeWidth}
   stroke-linecap="round"
   stroke-linejoin="round"
+  aria-hidden="true"
+  focusable="false"
+  class="icon-end"
 >
-  <!-- Background circle -->
-  <circle cx="12" cy="12" r="10" fill="#E8F0FE" />
+  <!-- Gradient definition -->
+  <defs>
+    <linearGradient id="endGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E0F2F1" />
+      <stop offset="100%" stop-color="#B2DFDB" />
+    </linearGradient>
+  </defs>
   
-  <!-- waving hand -->
-  <path d="M15 10c0.552 0 1-0.448 1-1s-0.448-1-1-1s-1 0.448-1 1S14.448 10 15 10z" fill="#A4C2F7" />
-  <path d="M8 11c0.552 0 1-0.448 1-1s-0.448-1-1-1s-1 0.448-1 1S7.448 11 8 11z" fill="#A4C2F7" />
-  <path d="M16 15c-0.034 0-0.069-0.002-0.103-0.005c-0.567-0.057-0.98-0.566-0.924-1.133l0.5-5c0.057-0.567 0.573-0.978 1.135-0.924
-    c0.567 0.057 0.98 0.566 0.924 1.133l-0.5 5C16.972 14.601 16.521 15 16 15z" fill={color} />
-  <path d="M13 14c-0.034 0-0.069-0.002-0.103-0.005c-0.567-0.057-0.98-0.566-0.924-1.133l0.5-5c0.057-0.567 0.573-0.978 1.135-0.924
-    c0.567 0.057 0.98 0.566 0.924 1.133l-0.5 5C13.972 13.601 13.521 14 13 14z" fill={color} />
-  <path d="M10 14c-0.034 0-0.069-0.002-0.103-0.005c-0.567-0.057-0.98-0.566-0.924-1.133l0.5-5c0.057-0.567 0.573-0.978 1.135-0.924
-    c0.567 0.057 0.98 0.566 0.924 1.133l-0.5 5C10.972 13.601 10.521 14 10 14z" fill={color} />
-  <path d="M7 13c-0.034 0-0.069-0.002-0.103-0.005c-0.567-0.057-0.98-0.566-0.924-1.133l0.5-5c0.057-0.567 0.573-0.978 1.135-0.924
-    c0.567 0.057 0.98 0.566 0.924 1.133l-0.5 5C7.972 12.601 7.521 13 7 13z" fill={color} />
+  <!-- Background circle with gradient -->
+  <circle cx="12" cy="12" r="10" fill="url(#endGradient)" />
+  
+  <!-- Waving hand icon - simplified and more modern -->
+  <path
+    d="M16 12C16 12 14.5 9 12.5 9C10.5 9 10 12.5 10 12.5C10 12.5 9 9.5 8 10C7 10.5 8 13 8 13"
+    stroke={color}
+    stroke-width={strokeWidth}
+    stroke-linecap="round"
+    fill="none"
+  />
+  
+  <!-- Palm -->
+  <path
+    d="M14 14.5C14 14.5 13 16 11.5 16C10 16 9 14.5 9 14.5"
+    stroke={color}
+    stroke-width={strokeWidth}
+    stroke-linecap="round"
+    fill="none"
+  />
 </svg>
+
+<style>
+  .icon-end {
+    transition: all 0.3s ease;
+  }
+  .icon-end:hover {
+    transform: rotate(10deg);
+  }
+</style>

@@ -39,17 +39,18 @@ function handleSelect(id: string) {
     <button
       on:click={() => handleSelect(button.id)}
       class="option-button {button.variant === 'primary'
-        ? 'bg-blue-500 hover:bg-blue-600 text-white'
+        ? 'bg-teal-500 hover:bg-teal-600 text-white shadow-md hover:shadow-lg'
         : button.variant === 'secondary'
-          ? 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+          ? 'bg-teal-50 hover:bg-teal-100 text-teal-800 shadow-sm hover:shadow'
           : button.variant === 'gradient-blue-teal'
-            ? 'bg-gradient-to-br-blue-teal text-white shadow hover:brightness-110'
-            : 'bg-transparent hover:bg-gray-100 text-gray-700 border border-gray-300'}"
+            ? 'bg-gradient-to-teal text-white shadow hover:shadow-lg hover:brightness-110'
+            : 'bg-transparent hover:bg-teal-50 text-teal-700 border border-teal-200 hover:border-teal-300'}"
+      aria-label={button.label}
     >
       {#if button.icon}
         {#if getIconName(button.icon)}
           <span class="option-icon">
-            <Icon name={getIconName(button.icon)} size={22} />
+            <Icon name={getIconName(button.icon)} size={22} color={button.variant === 'primary' ? '#FFFFFF' : undefined} />
           </span>
         {:else}
           <span class="option-icon">{button.icon}</span>
@@ -61,20 +62,29 @@ function handleSelect(id: string) {
 </div>
 
 <style>
-.option-button {
+  .option-button {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0.6rem 1.2rem;
-    border-radius: 0.375rem;
-    font-size: 0.9rem;
+    padding: 0.75rem 1.4rem;
+    border-radius: 0.5rem;
+    font-size: 0.95rem;
     font-weight: 500;
-    transition: all 0.2s;
+    transition: all 0.2s ease;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transform: translateY(0);
   }
 
-.option-icon {
-    margin-right: 0.7rem;
+  .option-button:hover {
+    transform: translateY(-1px);
+  }
+  
+  .option-button:active {
+    transform: translateY(0);
+  }
+
+  .option-icon {
+    margin-right: 0.75rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -82,5 +92,10 @@ function handleSelect(id: string) {
 
   .option-label {
     white-space: nowrap;
+  }
+  
+  /* Add teal gradient for gradient buttons */
+  :global(.bg-gradient-to-teal) {
+    background-image: linear-gradient(to right, #26A69A, #4DB6AC);
   }
 </style>

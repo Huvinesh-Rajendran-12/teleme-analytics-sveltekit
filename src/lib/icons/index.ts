@@ -31,6 +31,8 @@ export { default as AssistantIcon } from './AssistantIcon.svelte';
 export { default as DiagnosisIcon } from './DiagnosisIcon.svelte';
 export { default as MedicineIcon } from './MedicineIcon.svelte';
 export { default as ScrollToBottomIcon } from './ScrollToBottomIcon.svelte';
+export { default as MinimizeIcon } from './MinimizeIcon.svelte';
+export { default as CloseIcon } from './CloseIcon.svelte';
 
 // Export the Icon component wrapper
 export { default as Icon } from '../components/Icon.svelte';

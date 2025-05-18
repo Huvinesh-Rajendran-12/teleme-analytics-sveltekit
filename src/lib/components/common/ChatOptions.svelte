@@ -91,12 +91,12 @@
 </div>
 
 <style>
-  /* Gradient button styles */
+/* Gradient button styles */
   :global(.btn-gradient) {
     background-image: linear-gradient(
       to bottom right,
-      var(--color-primary-500, #3b82f6),
-      var(--color-teal-500, #14b8a6)
+      var(--color-teal-500, #26A69A),
+      var(--color-teal-600, #00897B)
     );
     color: white;
     border: none;

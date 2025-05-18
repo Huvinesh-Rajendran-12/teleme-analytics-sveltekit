@@ -1,7 +1,7 @@
 <script lang="ts">
   export let name: string;
   export let size: number = 24;
-  export let color: string = "currentColor";
+  export let color: string = "#26A69A"; // Teal color to match the header
   export let strokeWidth: number = 2;
   
   // Dynamically import the requested icon
@@ -36,7 +36,9 @@
     AssistantIcon,
     DiagnosisIcon,
     MedicineIcon,
-    ScrollToBottomIcon
+    ScrollToBottomIcon,
+    MinimizeIcon,
+    CloseIcon
   } from '$lib/icons';
   
   // Map icon names to components
@@ -71,7 +73,9 @@
     assistant: AssistantIcon,
     diagnosis: DiagnosisIcon,
     medicine: MedicineIcon,
-    scrollToBottom: ScrollToBottomIcon
+    scrollToBottom: ScrollToBottomIcon,
+    minimize: MinimizeIcon,
+    close: CloseIcon
   };
   
   // Get the requested icon component

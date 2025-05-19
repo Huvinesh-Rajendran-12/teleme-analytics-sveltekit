@@ -678,6 +678,13 @@
           disabled={chatState.loading}
           maxLength={MAX_QUESTION_LENGTH}
           on:cancel={() => {
+            // Remove the last assistant message that asked for a question
+            if (chatState.messages.length > 0 && 
+                chatState.messages[chatState.messages.length - 1].role === 'assistant' &&
+                typeof chatState.messages[chatState.messages.length - 1].content === 'string' &&
+                (chatState.messages[chatState.messages.length - 1].content as string).includes('What question would you like to ask?')) {
+              chatState.messages = chatState.messages.slice(0, -1);
+            }
             // Return to summary stage with post-response options
             chatState = { ...chatState, stage: 'summary' };
           }}

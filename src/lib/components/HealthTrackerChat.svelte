@@ -785,6 +785,13 @@
           onSendQuestion={handleSendQuestion} 
           disabled={chatState.loading} 
           on:cancel={() => {
+            // Remove the last assistant message that asked for a question
+            if (chatState.messages.length > 0 && 
+                chatState.messages[chatState.messages.length - 1].role === 'assistant' &&
+                typeof chatState.messages[chatState.messages.length - 1].content === 'string' &&
+                (chatState.messages[chatState.messages.length - 1].content as string).includes('What would you like to ask?')) {
+              chatState.messages = chatState.messages.slice(0, -1);
+            }
             // Return to post_response stage with the previous options
             chatState = { ...chatState, stage: 'post_response' };
           }}

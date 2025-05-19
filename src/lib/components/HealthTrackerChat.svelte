@@ -781,7 +781,14 @@
   {#if chatState.stage === 'question'}
     <div class="w-full border-t border-gray-200 bg-white shadow-md">
       <div class="px-4 md:px-8 lg:px-12 py-3 w-full">
-        <ChatInput onSendQuestion={handleSendQuestion} disabled={chatState.loading} />
+        <ChatInput 
+          onSendQuestion={handleSendQuestion} 
+          disabled={chatState.loading} 
+          on:cancel={() => {
+            // Return to post_response stage with the previous options
+            chatState = { ...chatState, stage: 'post_response' };
+          }}
+        />
       </div>
     </div>
   {/if}

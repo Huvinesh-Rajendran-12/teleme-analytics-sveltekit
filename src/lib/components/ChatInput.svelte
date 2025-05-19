@@ -1,6 +1,10 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, createEventDispatcher } from 'svelte';
   import { Icon } from '$lib/icons';
+  
+  const dispatch = createEventDispatcher<{
+    cancel: void;
+  }>();
   
   export let disabled = false;
   export let onSendQuestion: (message: string) => void;
@@ -67,6 +71,14 @@
       maxlength={maxLength}
       {disabled}
     ></textarea>
+
+    <button
+      on:click={() => dispatch('cancel')}
+      class="ml-2 mb-2 p-2 rounded-full bg-gray-300 hover:bg-gray-400 text-gray-700 focus:outline-none disabled:opacity-50 disabled:pointer-events-none relative overflow-hidden"
+      aria-label="Cancel"
+    >
+      <span class="relative z-10"><Icon name="close" size={20} /></span>
+    </button>
 
     <button
       on:click={handleSend}

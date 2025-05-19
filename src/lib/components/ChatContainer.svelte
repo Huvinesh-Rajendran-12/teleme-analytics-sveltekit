@@ -677,6 +677,10 @@
           onSendQuestion={handleSendQuestion}
           disabled={chatState.loading}
           maxLength={MAX_QUESTION_LENGTH}
+          on:cancel={() => {
+            // Return to summary stage with post-response options
+            chatState = { ...chatState, stage: 'summary' };
+          }}
         />
       </div>
     </div>

@@ -179,6 +179,23 @@
       chatState.loading = false;
       return; // Stop execution if validation fails
     }
+    
+    // Check for required parameters before proceeding
+    if (!params?.sessionId || !params?.centre_id || !params?.centre_name) {
+      console.warn('Missing required parameters for analytics:', { 
+        sessionId: params?.sessionId ? 'present' : 'missing',
+        centre_id: params?.centre_id ? 'present' : 'missing',
+        centre_name: params?.centre_name ? 'present' : 'missing',
+        auth_token: params?.auth_token ? 'present' : 'missing'
+      });
+      
+      addMessage(
+        'assistant',
+        'Unable to process request: Missing required session information. Please refresh the page and try again.'
+      );
+      chatState.loading = false;
+      return;
+    }
 
     chatState.loading = true;
 
@@ -204,6 +221,11 @@
 
       console.debug('Action selected', { action });
       console.debug('Action message prepared', { action_message });
+      console.debug('Params available for analytics', { 
+        sessionId: params.sessionId.substring(0, 8) + '...',
+        centre_id: params.centre_id,
+        auth_token: params.auth_token ? 'present' : 'missing'
+      });
       handleAnalyticsQuery(action_message);
     } catch (error) {
       console.error('Error handling option', error);
@@ -226,20 +248,44 @@
       chatState.stage = 'welcome'; // Move to welcome stage so user can restart
       return; // Stop execution if not connected
     }
+    
+    // This check is redundant with the one in handleDurationSubmit, but we keep it for safety
+    // and to handle direct calls to handleAnalyticsQuery from other places in the code
+    if (!params?.auth_token) {
+      console.warn('Missing auth token for analytics query');
+      addMessage(
+        'assistant',
+        'Authentication error: Your session appears to be invalid. Please refresh the page and try again.'
+      );
+      chatState.loading = false;
+      return;
+    }
+
+    // Verify required params before API call
+    if (!params.sessionId || !params.centre_id || !params.centre_name) {
+      console.warn('Missing required parameters for analytics query', {
+        sessionId: params?.sessionId ? 'present' : 'missing',
+        centre_id: params?.centre_id ? 'present' : 'missing',
+        centre_name: params?.centre_name ? 'present' : 'missing'
+      });
+      
+      addMessage(
+        'assistant',
+        'Unable to process request: Missing required session information. Please refresh the page and try again.'
+      );
+      chatState.loading = false;
+      return;
+    }
 
     chatState.loading = true;
 
     try {
-      // Verify auth token first
-      if (!params?.auth_token) {
-        throw new Error('Authentication token is required');
-      }
-
-      // Verify required params after auth
-      if (!params.sessionId || !params.centre_id || !params.centre_name) {
-        throw new Error('Session ID, Centre ID, and Centre name are required');
-      }
-
+      console.debug('Making API call with params', {
+        sessionId: params.sessionId.substring(0, 8) + '...',
+        centre_id: params.centre_id,
+        auth_token_present: params.auth_token ? true : false
+      });
+      
       const result = await n8nService.callWithParams(
         params.sessionId,
         params.centre_id,
@@ -320,11 +366,13 @@
   async function handleSendQuestion(question: string) {
     console.log('handleSendQuestion called with:', question.substring(0, 20) + '...');
 
-    // Removed chatInputError assignments as the variable is unused
     // Check for question length
     if (question.length > MAX_QUESTION_LENGTH) {
       console.warn(`Question exceeds max length (${MAX_QUESTION_LENGTH}): ${question}`);
-      // Handle the error appropriately, e.g., show a notification, since chatInputError is not displayed
+      addMessage(
+        'assistant',
+        `Your question is too long. Please limit your input to ${MAX_QUESTION_LENGTH} characters.`
+      );
       chatState = { ...chatState, loading: false }; // Ensure loading is off if we return early
       return;
     }
@@ -335,7 +383,10 @@
 
     if (disallowedPattern.test(question)) {
       console.warn(`Question contains disallowed pattern: ${question}`);
-      // Handle the error appropriately, e.g., show a notification
+      addMessage(
+        'assistant',
+        'Please enter only plain text. SQL, code, or special script tags are not allowed.'
+      );
       chatState = { ...chatState, loading: false }; // Ensure loading is off
       return; // Stop execution if validation fails
     }
@@ -350,6 +401,32 @@
       chatState.stage = 'welcome'; // Move to welcome stage so user can restart
       return; // Stop execution if not connected
     }
+    
+    // Verify required params before proceeding
+    if (!params?.auth_token) {
+      console.warn('Missing auth token for question submission');
+      addMessage(
+        'assistant',
+        'Authentication error: Your session appears to be invalid. Please refresh the page and try again.'
+      );
+      chatState.loading = false;
+      return;
+    }
+
+    // Verify required params
+    if (!params.sessionId || !params.centre_id) {
+      console.warn('Missing required parameters for question submission', {
+        sessionId: params?.sessionId ? 'present' : 'missing',
+        centre_id: params?.centre_id ? 'present' : 'missing'
+      });
+      
+      addMessage(
+        'assistant',
+        'Unable to process request: Missing required session information. Please refresh the page and try again.'
+      );
+      chatState.loading = false;
+      return;
+    }
 
     chatState.loading = true;
     addMessage('user', question);
@@ -359,16 +436,12 @@
     scrollToBottom();
 
     try {
-      // Verify auth token first
-      if (!params?.auth_token) {
-        throw new Error('Authentication token is required');
-      }
-
-      // Verify required params after auth
-      if (!params.sessionId || !params.centre_id) {
-        throw new Error('Session ID and Centre ID are required');
-      }
-
+      console.debug('Making API call for question with params', {
+        sessionId: params.sessionId.substring(0, 8) + '...',
+        centre_id: params.centre_id,
+        auth_token_present: params.auth_token ? true : false
+      });
+      
       const result = await n8nService.callWithParams(
         params.sessionId,
         params.centre_id,

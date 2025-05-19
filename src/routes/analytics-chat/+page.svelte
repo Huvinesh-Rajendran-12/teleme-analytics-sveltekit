@@ -44,7 +44,7 @@
         
         // Add any additional params from the URL
         searchParams.forEach((value, key) => {
-          if (key !== 'centre_id') {
+          if (key !== 'centre_id' && key !== 'centre_name') {
             urlParams[key] = value;
           }
         });
@@ -60,7 +60,7 @@
             const token = authHeader.startsWith('Bearer ')
               ? authHeader.substring(7)
               : authHeader;
-            // Auth token found in header meta tag for analytics chat
+            console.debug('Auth token found in header meta tag for analytics chat');
             foundToken = token;
           }
         } catch (error) {
@@ -72,7 +72,7 @@
         
         // 2. Fallback: Extract auth_token from query parameters if not found in header
         if (!foundToken && auth_token_url) {
-          // Auth token found in URL parameters for analytics chat
+          console.debug('Auth token found in URL parameters for analytics chat');
           foundToken = auth_token_url;
         }
         
@@ -95,18 +95,28 @@
                   exp: number;
                 }
               };
-              if (
-                payload &&
-                payload.centre_id &&
-                payload.centre_name
-              ) {
+              
+              console.debug('JWT token verification successful');
+              
+              if (payload && payload.centre_id && payload.centre_name) {
                 urlParams = {
                   ...urlParams,
                   centre_id: payload.centre_id,
                   centre_name: payload.centre_name,
-                  is_ngo: payload.is_ngo,
+                  is_ngo: payload.is_ngo ?? false,
                   auth_token: foundToken,
                 };
+                
+                console.debug('Extracted params from JWT', {
+                  centre_id: payload.centre_id,
+                  centre_name: payload.centre_name,
+                  is_ngo: payload.is_ngo ?? false
+                });
+              } else {
+                console.warn('JWT payload missing required fields', { 
+                  has_centre_id: !!payload?.centre_id,
+                  has_centre_name: !!payload?.centre_name
+                });
               }
             } catch (error) {
               console.error(
@@ -114,6 +124,8 @@
                 error,
               );
             }
+          } else {
+            console.warn('VITE_ANALYTICS_JWT_SECRET not configured, skipping JWT verification');
           }
         } else {
           // Handle case where no token is found
@@ -122,7 +134,24 @@
           );
         }
         
-        params = urlParams;
+        // Final validation of params
+        if (!urlParams.centre_id || !urlParams.centre_name) {
+          console.warn('Missing required parameters after setup', {
+            centre_id: urlParams.centre_id ? 'present' : 'missing',
+            centre_name: urlParams.centre_name ? 'present' : 'missing'
+          });
+        }
+        
+        // Make a defensive copy of the params to ensure they're set correctly
+        params = {...urlParams, sessionId: sessionId};
+        
+        console.debug('Analytics chat params initialized', {
+          sessionId: params.sessionId.substring(0, 8) + '...',
+          centre_id: params.centre_id,
+          centre_name: params.centre_name,
+          auth_token_present: params.auth_token ? true : false
+        });
+        
       } catch (error) {
         console.error('Error setting up analytics chat:', error);
       } finally {

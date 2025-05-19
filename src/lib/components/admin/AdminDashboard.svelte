@@ -159,7 +159,7 @@
       </div>
 
       <!-- Date range selector -->
-      <div
+      <!-- <div
         class="flex space-x-1 rounded-lg shadow-sm bg-white border border-gray-200 overflow-hidden"
       >
         {#each dateRanges as range}
@@ -172,7 +172,7 @@
             {range.label}
           </button>
         {/each}
-      </div>
+      </div> -->
     </div>
 
     <!-- Tab navigation -->

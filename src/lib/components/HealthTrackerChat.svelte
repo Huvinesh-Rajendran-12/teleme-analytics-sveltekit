@@ -174,7 +174,7 @@
 
     // Process AI message content with markdown parser
     if (role === 'assistant') {
-      processedContent = parseAIMessageContent(finalContent);
+      processedContent = parseAIMessageContent(finalContent.toString());
     }
 
     const newMessage: Message = {
@@ -213,7 +213,7 @@
 
     // Clean up inactivity timer
     // No need to clear timer here - it's handled by activityTracker.cleanup()
-    
+
     // Clean up the activity tracker to stop monitoring events
     if (activityTracker) {
       activityTracker.cleanup();
@@ -425,7 +425,7 @@
   const handleDateRangeSelection = async (option: string) => {
     logDebug(`Date range selected: ${option}`);
     recordActivity();
-    
+
     // Check connection before processing
     if (!isConnected && activityTracker) {
       const connectionStatus = await activityTracker.checkConnection();
@@ -445,7 +445,7 @@
     if (option === '1month') period = 1;
     else if (option === '3months') period = 3;
     else if (option === '6months') period = 6;
-    
+
     logDebug(`Fetching data for period: ${period} months`);
     fetchDataFromN8n(period);
   };
@@ -460,7 +460,7 @@
       const connectionStatus = await checkConnectionStatus(n8nEndpoint, CONNECTION_CHECK_TIMEOUT);
       isConnected = connectionStatus;
 
-      if (!connectionStatus && id !== 'end') {
+      if (!connectionStatus) {
         addMessage(
           'assistant',
           'Cannot connect to the Health Tracker service. Please check your network connection and try again later.'

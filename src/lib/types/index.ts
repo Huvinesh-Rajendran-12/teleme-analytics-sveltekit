@@ -45,7 +45,7 @@ export type OptionsButtonType = {
   id: string;
   label: string;
   icon: string;
-  variant: 'primary' | 'secondary' | 'ghost';
+  variant: 'primary' | 'secondary' | 'ghost' | 'gradient-blue-teal';
   isVisible: boolean;
   order: number;
 };

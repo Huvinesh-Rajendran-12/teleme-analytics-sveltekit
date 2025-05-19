@@ -21,7 +21,7 @@
   
   // Handle button selection
   function handleSelect(id: string) {
-    console.log('Button selected:', id);
+    console.debug('Button selected:', id);
     dispatch('select', id);
   }
   

@@ -7,7 +7,7 @@
   export let maxLength: number | undefined = undefined;
 
   onMount(() => {
-    console.log('ChatInput component mounted');
+    console.debug('ChatInput component mounted');
   });
 
   let inputMessage = '';

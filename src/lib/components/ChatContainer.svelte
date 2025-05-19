@@ -6,7 +6,8 @@
   import type { OptionsButtonType } from '$lib/types';
   import { n8nService } from '$lib/services/n8nService';
   import { ActivityTracker, shouldAddConnectionErrorMessage } from '$lib/utils/activityUtils';
-  import { parseAIMessageContent } from '$lib/utils/markdownParser';
+  // import { parseAIMessageContent } from '$lib/utils/markdownParser';
+  // Commented out unused import
   import {
     TIMEOUTS,
     ENDPOINTS,
@@ -16,7 +17,7 @@
   } from '$lib/config/chatConfig';
   import type { ChatState, Message, Params } from '$lib/types';
 
-  console.log('MAX_QUESTION_LENGTH imported as:', MAX_QUESTION_LENGTH);
+  console.debug('MAX_QUESTION_LENGTH imported as:', MAX_QUESTION_LENGTH);
 
   // Common components
   import ConnectionStatusBanner from './common/ConnectionStatusBanner.svelte';
@@ -331,7 +332,7 @@
   }
 
   function handlePostResponseOption(buttonId: string) {
-    console.log('Post response option selected:', buttonId);
+    console.debug('Post response option selected:', buttonId);
     const button = menuConfig.menuButtons.conversation.find((b) => b.id === buttonId);
     if (!button) {
       console.error('Button not found in menu config:', buttonId);
@@ -354,17 +355,17 @@
         }
         break;
       case 'question':
-        console.log('Setting stage to question');
+        console.debug('Setting stage to question');
         // Use the reactive assignment for the question state
         chatState = { ...chatState, stage: 'question' };
         addMessage('assistant', 'What question would you like to ask?');
-        console.log('Current stage after update:', chatState.stage);
+        console.debug('Current stage after update:', chatState.stage);
         break;
     }
   }
 
   async function handleSendQuestion(question: string) {
-    console.log('handleSendQuestion called with:', question.substring(0, 20) + '...');
+    console.debug('handleSendQuestion called with:', question.substring(0, 20) + '...');
 
     // Check for question length
     if (question.length > MAX_QUESTION_LENGTH) {

@@ -5,7 +5,7 @@ import svelteParser from 'svelte-eslint-parser';
 
 export default [
   {
-    // Ignore files and directories
+    // Ignore files and directories (migrated from .eslintignore)
     ignores: [
       '*.cjs',
       '*.config.js', // It's good practice to ignore config files themselves from linting
@@ -13,7 +13,21 @@ export default [
       '.svelte-kit/**',
       'build/**',
       'dist/**',
-      'package/**'
+      'package/**',
+      '.DS_Store',
+      '/build',
+      '.env',
+      '.env.*',
+      '!.env.example',
+      'pnpm-lock.yaml',
+      'package-lock.json',
+      'yarn.lock',
+      '/coverage',
+      '/.next/',
+      '/out/',
+      '.vercel',
+      '.output',
+      '.pnpm-debug.log'
     ]
   },
   {

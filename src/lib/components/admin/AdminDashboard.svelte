@@ -17,7 +17,7 @@
   let analyticsStats: UserActivityStats | null = null;
   let healthTrackerStats: UserActivityStats | null = null;
   let activeTab = 'overview'; // 'overview', 'analytics', 'health'
-  let dateRangeFilter = '7d'; // '24h', '7d', '30d', '90d', 'all'
+  // let dateRangeFilter = '7d'; // '24h', '7d', '30d', '90d', 'all'
 
   // Placeholder chart data
   const chartData = {
@@ -28,13 +28,13 @@
     errorRates: [3, 2, 4, 2, 1, 1, 2]
   };
 
-  const dateRanges = [
-    { id: '24h', label: 'Last 24 Hours' },
-    { id: '7d', label: 'Last 7 Days' },
-    { id: '30d', label: 'Last 30 Days' },
-    { id: '90d', label: 'Last 90 Days' },
-    { id: 'all', label: 'All Time' }
-  ];
+  // const dateRanges = [
+  //   { id: '24h', label: 'Last 24 Hours' },
+  //   { id: '7d', label: 'Last 7 Days' },
+  //   { id: '30d', label: 'Last 30 Days' },
+  //   { id: '90d', label: 'Last 90 Days' },
+  //   { id: 'all', label: 'All Time' }
+  // ];
 
   // Format time since last activity
   function formatTimeSince(time: TimeSinceLastActivity | undefined): string {
@@ -115,10 +115,10 @@
     activeTab = tab;
   }
 
-  function setDateRange(range: string) {
-    dateRangeFilter = range;
-    // In a real implementation, we would refetch stats for the selected range
-  }
+  // function setDateRange(range: string) {
+  //   dateRangeFilter = range;
+  //   // In a real implementation, we would refetch stats for the selected range
+  // }
 
   onMount(() => {
     logDebug('AdminDashboard component mounted - fetching stats');

@@ -139,7 +139,8 @@ export function parseAIMessageContent(message: string | Record<string, unknown> 
     
     // If message is an object with content property, use that
     if (typeof message === 'object' && message !== null) {
-      content = message.content || '';
+      const msgObj = message as Record<string, unknown>;
+      content = typeof msgObj.content === 'string' ? msgObj.content : '';
       
       // Try to parse if it might be JSON
       if (typeof content === 'string' && (content.startsWith('{') || content.startsWith('['))) {

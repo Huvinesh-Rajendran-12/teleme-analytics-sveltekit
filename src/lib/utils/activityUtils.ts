@@ -96,7 +96,7 @@ export class ActivityTracker {
       this.options.logDebug?.(`Connection check result: ${connected}`);
       return connected;
     } catch (error) {
-      this.options.logError?.('Error checking connection', error);
+      this.options.logError?.('Error checking connection', error as Record<string, unknown>);
       return false;
     }
   }

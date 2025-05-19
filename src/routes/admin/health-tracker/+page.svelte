@@ -79,8 +79,8 @@
         // If it's an array as expected
         const data = result[0];
         if (data && typeof data === 'object' && 'conversations' in data) {
-          conversations = data.conversations || [];
-          totalPages = data.total_pages || 1;
+          conversations = (data.conversations as unknown as ConversationListItem[]) || [];
+          totalPages = (data.total_pages as unknown as number) || 1;
 
           logDebug('Successfully loaded conversations:', conversations.length);
           logDebug('Total pages:', totalPages);
@@ -91,8 +91,8 @@
         }
       } else if (result && typeof result === 'object' && 'conversations' in result) {
         // If it's a direct object
-        conversations = result.conversations || [];
-        totalPages = result.total_pages || 1;
+        conversations = (result.conversations as unknown as ConversationListItem[]) || [];
+        totalPages = 'total_pages' in result ? (result.total_pages as unknown as number) : 1;
 
         logDebug('Successfully loaded conversations from direct object:', conversations.length);
       } else {

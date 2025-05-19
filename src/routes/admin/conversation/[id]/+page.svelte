@@ -170,7 +170,7 @@
                 </div>
                 <div class="prose prose-sm max-w-none">
                   {#if parsedMessage.role === 'ai' || parsedMessage.role === 'assistant'}
-                    <div class="whitespace-pre-wrap">{@html parseAIMessageContent(parsedMessage)}</div>
+                    <div class="whitespace-pre-wrap">{@html parseAIMessageContent(parsedMessage.content || '')}</div>
                   {:else}
                     <div class="whitespace-pre-wrap">{parsedMessage.content}</div>
                   {/if}

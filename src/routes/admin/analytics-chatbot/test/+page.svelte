@@ -122,10 +122,10 @@
                   </span>
                 </div>
                 <p class="text-sm text-gray-600">
-                  Last Activity: {formatDate(conversation.last_activity)}
+                  Last Activity: {formatDate(String(conversation.last_activity || ''))}
                 </p>
                 <p class="text-sm mt-2">
-                  Messages: {conversation.conversation_history?.length || 0}
+                  Messages: {Array.isArray(conversation.conversation_history) ? conversation.conversation_history.length : 0}
                 </p>
               </div>
             {/each}

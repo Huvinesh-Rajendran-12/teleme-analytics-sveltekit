@@ -137,7 +137,7 @@ function renderMessage(messageItem: MessageItem, _index: number) {
     const parsedMessage = parseMessage(messageItem.message);
 
     if (parsedMessage.role === 'ai' || parsedMessage.role === 'assistant') {
-      const content = parseAIMessageContent(parsedMessage);
+      const content = parseAIMessageContent(parsedMessage.content || '');
       
       return {
         role: 'assistant',

@@ -62,7 +62,7 @@ export const GET: RequestHandler = async ({ request }) => {
         status: typeof noAuthResponse.status === 'number' ? noAuthResponse.status : 'error',
         data: noAuthResponse.data || noAuthResponse
       },
-      authResult: token ? {
+      authResult: (token && authResponse) ? {
         status: typeof authResponse.status === 'number' ? authResponse.status : 'error',
         data: authResponse.data || authResponse
       } : 'No token provided'

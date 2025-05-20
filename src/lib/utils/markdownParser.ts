@@ -113,18 +113,17 @@ export function isLikelyMarkdown(content: string): boolean {
  */
 export function safeParseMarkdown(content: string): string {
   if (!content) return '';
-  
   try {
-    // Only parse as markdown if likely markdown patterns are detected
     if (isLikelyMarkdown(content)) {
-      return parseMarkdown(content);
+      return parseMarkdown(content); // This already sanitizes
     }
-    
-    // Otherwise return the content as-is
-    return content;
+    // If not likely markdown, still sanitize it as plain HTML before returning
+    return DOMPurify.sanitize(content, purifyOptions); 
   } catch (error) {
     logError('Error in safeParseMarkdown:', error);
-    return content; // Return original content if anything fails
+    // Fallback: Sanitize the original content string directly in case of an error during processing.
+    // This ensures that even if isLikelyMarkdown or parseMarkdown throws, we still attempt sanitization.
+    return DOMPurify.sanitize(content, purifyOptions); 
   }
 }
 

@@ -137,12 +137,22 @@
   }
 
   function startConversation() {
+    console.debug('Starting conversation', {
+      currentStage: chatState.stage,
+      messagesCount: chatState.messages.length
+    });
+
     if (chatState.stage === 'welcome' && chatState.messages.length > 0) {
-      chatState = {
+      const newState = {
         messages: [],
         loading: false,
         stage: 'initial'
       };
+      console.debug('Stage transition in startConversation: full reset', {
+        from: chatState.stage,
+        to: 'initial'
+      });
+      chatState = newState;
       onRestartConversation();
 
       setTimeout(() => {
@@ -156,6 +166,10 @@
         'assistant',
         'Welcome to the Teleme Analytics Assistant. How can I help you with your data analytics today?'
       );
+      console.debug('Stage transition in startConversation: simple transition', {
+        from: chatState.stage,
+        to: 'initial'
+      });
       chatState.stage = 'initial';
     }
   }
@@ -179,14 +193,28 @@
   }
 
   function handleInitialOption(buttonId: string) {
+    console.debug('Initial option selected:', buttonId);
     const button = menuConfig.menuButtons.main.find((b) => b.id === buttonId);
-    if (!button) return;
+    if (!button) {
+      console.error('Button not found in menu config:', buttonId);
+      return;
+    }
 
-    chatState = {
+    const newState = {
       ...chatState,
       stage: 'asking_duration',
       selectedOption: buttonId
     };
+
+    console.debug('Stage transition in handleInitialOption', {
+      from: chatState.stage,
+      to: 'asking_duration',
+      button: button.label,
+      icon: button.icon,
+      selectedOption: buttonId
+    });
+
+    chatState = newState;
 
     addMessage('user', button.label);
     addMessage('assistant', 'Please select the duration for analysis:');
@@ -439,7 +467,19 @@
     switch (buttonId) {
       case 'back':
         // Use the reactive assignment to ensure the component updates
-        chatState = { ...chatState, stage: 'initial' };
+        const newState = {
+          ...chatState,
+          stage: 'initial',
+          // Ensure we reset the buttons with proper icons when going back to initial stage
+          selectedOption: undefined
+        };
+        console.debug('Stage transition in handlePostResponseOption: back button', {
+          from: chatState.stage,
+          to: 'initial',
+          selectedOption: chatState.selectedOption,
+          newSelectedOption: undefined
+        });
+        chatState = newState;
         addMessage('assistant', 'What would you like to do with your data analytics?');
         break;
       case 'end':
@@ -752,29 +792,76 @@
 
       {#if !chatState.loading}
         {#if chatState.stage !== 'welcome' && chatState.stage !== 'question'}
-          <!-- Options panel using the new ChatOptions component -->
-          <ChatOptions
-            stage={chatState.stage}
-            buttons={chatState.stage === 'initial'
-              ? (menuConfig.menuButtons.main as OptionsButtonType[])
-              : chatState.stage === 'summary'
-                ? (menuConfig.menuButtons.conversation as OptionsButtonType[])
-                : []}
-            {durationInput}
-            {durationError}
-            hasMessages={chatState.messages.length > 0}
-            loading={chatState.loading}
-            {isProcessing}
-            on:select={(e) => {
-              if (chatState.stage === 'initial') {
-                handleInitialOption(e.detail);
-              } else if (chatState.stage === 'summary') {
-                handlePostResponseOption(e.detail);
-              }
+          <!-- Log which buttons are being passed to ChatOptions -->
+          {#if chatState.stage === 'initial'}
+            <!-- Initial stage - show main menu buttons -->
+            {@const logButtons = () => {
+              console.debug(
+                'Passing initial menu buttons to ChatOptions:',
+                menuConfig.menuButtons.main.map((b) => ({ id: b.id, icon: b.icon, label: b.label }))
+              );
+              return menuConfig.menuButtons.main;
             }}
-            on:submit={() => handleDurationSubmit()}
-            on:stop={() => stopProcessing()}
-          />
+            <!-- ChatOptions component with main menu buttons -->
+            <ChatOptions
+              stage={chatState.stage}
+              buttons={logButtons() as OptionsButtonType[]}
+              {durationInput}
+              {durationError}
+              hasMessages={chatState.messages.length > 0}
+              loading={chatState.loading}
+              {isProcessing}
+              on:select={(e) => handleInitialOption(e.detail)}
+              on:submit={() => handleDurationSubmit()}
+              on:stop={() => stopProcessing()}
+            />
+          {:else if chatState.stage === 'summary'}
+            <!-- Summary stage - show conversation buttons -->
+            {@const logButtons = () => {
+              console.debug(
+                'Passing conversation menu buttons to ChatOptions:',
+                menuConfig.menuButtons.conversation.map((b) => ({
+                  id: b.id,
+                  icon: b.icon,
+                  label: b.label
+                }))
+              );
+              return menuConfig.menuButtons.conversation;
+            }}
+            <!-- ChatOptions component with conversation buttons -->
+            <ChatOptions
+              stage={chatState.stage}
+              buttons={logButtons() as OptionsButtonType[]}
+              {durationInput}
+              {durationError}
+              hasMessages={chatState.messages.length > 0}
+              loading={chatState.loading}
+              {isProcessing}
+              on:select={(e) => handlePostResponseOption(e.detail)}
+              on:submit={() => handleDurationSubmit()}
+              on:stop={() => stopProcessing()}
+            />
+          {:else}
+            <!-- Other stages - show empty buttons array -->
+            <ChatOptions
+              stage={chatState.stage}
+              buttons={[]}
+              {durationInput}
+              {durationError}
+              hasMessages={chatState.messages.length > 0}
+              loading={chatState.loading}
+              {isProcessing}
+              on:select={(e) => {
+                if (chatState.stage === 'initial') {
+                  handleInitialOption(e.detail);
+                } else if (chatState.stage === 'summary') {
+                  handlePostResponseOption(e.detail);
+                }
+              }}
+              on:submit={() => handleDurationSubmit()}
+              on:stop={() => stopProcessing()}
+            />
+          {/if}
         {/if}
 
         {#if chatState.stage === 'welcome' && chatState.messages.length > 0}

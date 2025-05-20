@@ -22,6 +22,12 @@
   export let isProcessing: boolean = false;
   export let hasMessages: boolean = false;
   
+  // Log the current stage whenever it changes
+  $: console.debug('ChatOptions component - current stage:', stage, { 
+    buttonCount: buttons.length,
+    buttonsInfo: buttons.map(b => ({id: b.id, icon: b.icon, label: b.label}))
+  });
+  
   // Handle button selection
   function handleSelect(id: string) {
     console.debug('Button selected:', id);

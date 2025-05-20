@@ -26,7 +26,13 @@ function getIconName(iconEmoji: string): string {
     '👋': 'end'
   };
   
-  return iconMap[iconEmoji] || '';
+  const result = iconMap[iconEmoji] || '';
+  console.debug('Mapping emoji to icon:', { 
+    emoji: iconEmoji, 
+    iconName: result,
+    mappingFound: !!result
+  });
+  return result;
 }
 
 // Handle button click
@@ -34,12 +40,26 @@ function handleSelect(id: string) {
   console.debug('Option button clicked:', id);
   onSelect(id);
 }
+
+// Debug function to log button props
+function logButtons(buttons: typeof buttons) {
+  console.debug('Rendering buttons:', buttons.map(b => ({
+    id: b.id,
+    label: b.label,
+    icon: b.icon,
+    variant: b.variant,
+    isVisible: b.isVisible,
+    order: b.order
+  })));
+}
+
+// Call the debug function whenever buttons change
+$: logButtons(buttons);
 </script>
 
 <div class="flex flex-wrap justify-center gap-3">
   {#each buttons.filter(b => b.isVisible).sort((a, b) => a.order - b.order) as button}
-    {@const mainMenuItem = menuConfig.menuButtons.main.find(item => item.id === button.id)}
-    {@const iconToUse = mainMenuItem ? mainMenuItem.icon : button.icon}
+    {@const iconToUse = button.icon}
     <button
       on:click={() => handleSelect(button.id)}
       class="option-button {button.variant === 'primary'

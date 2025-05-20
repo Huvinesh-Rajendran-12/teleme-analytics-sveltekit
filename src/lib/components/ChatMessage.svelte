@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { parseMarkdown } from '$lib/utils/markdownParser';
+  // import { parseMarkdown } from '$lib/utils/markdownParser';
   import type { Message } from '$lib/types';
-  import SafeHtml from './common/SafeHtml.svelte';
+  // import SafeHtml from './common/SafeHtml.svelte';
+  import SvelteMarkdown from 'svelte-markdown';
 
   export let message: Message;
 
@@ -13,20 +14,22 @@
       try {
         return JSON.stringify(content, null, 2);
       } catch {
-        return "Error: Could not display message content.";
+        return 'Error: Could not display message content.';
       }
     }
-    return "Unknown message format";
+    return 'Unknown message format';
   }
 
   // Parse markdown content properly
   $: rawContent = getMessageContent(message.content);
-  $: displayContent = parseMarkdown(rawContent);
+  // $: displayContent = parseMarkdown(rawContent);
 </script>
 
-<div class={`p-4 rounded-lg max-w-4xl ${message.role === 'user' ? 'bg-blue-50 ml-auto' : 'bg-white shadow-sm'}`}>
+<div
+  class={`p-4 rounded-lg max-w-4xl ${message.role === 'user' ? 'bg-blue-50 ml-auto' : 'bg-white shadow-sm'}`}
+>
   <div class="prose prose-sm">
-    <SafeHtml html={displayContent} />
+    <SvelteMarkdown source={rawContent} />
   </div>
 </div>
 

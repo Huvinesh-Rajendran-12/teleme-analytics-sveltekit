@@ -615,7 +615,7 @@
               </div>
 
               <div class="mt-4 pt-4 border-t border-gray-100 text-center">
-                <a href="#" class="text-sm font-medium text-blue-600 hover:text-blue-800">
+                <a href="/" class="text-sm font-medium text-blue-600 hover:text-blue-800">
                   View all activity
                 </a>
               </div>
@@ -700,7 +700,7 @@
               </div>
 
               <div class="mt-4 pt-4 border-t border-gray-100 text-center">
-                <a href="#" class="text-sm font-medium text-blue-600 hover:text-blue-800">
+                <a href="/" class="text-sm font-medium text-blue-600 hover:text-blue-800">
                   View detailed analytics
                 </a>
               </div>

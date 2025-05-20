@@ -179,7 +179,12 @@
     {#if sidebarOpen}
       <div
         class="fixed inset-0 z-30 bg-gray-600 bg-opacity-75 lg:hidden"
+        role="button"
+        tabindex="0"
         on:click={() => (sidebarOpen = false)}
+        on:keydown={(e) => {
+          if (e.key === 'Escape') sidebarOpen = false;
+        }}
         transition:fade={{ duration: 150 }}
       ></div>
 
@@ -219,7 +224,7 @@
                 class="{isActive(item.href)
                   ? 'bg-blue-50 text-blue-600'
                   : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}
-                  group flex items-center rounded-md px-2 py-3 text-sm font-medium"
+                      group flex items-center rounded-md px-2 py-3 text-sm font-medium"
               >
                 <div
                   class="mr-3 flex-shrink-0 {isActive(item.href)

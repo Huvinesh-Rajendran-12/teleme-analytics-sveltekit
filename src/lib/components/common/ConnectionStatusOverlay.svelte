@@ -11,7 +11,7 @@
   // Store values
   $: isConnected = $connectionStatus.isConnected;
   $: isRetrying = $connectionStatus.isRetrying;
-  $: retryCount = $connectionStatus.retryCount;
+  // We don't use retryCount in this component, so no need to define it
   
   // Get appropriate message based on connection status
   $: statusMessage = !isConnected 

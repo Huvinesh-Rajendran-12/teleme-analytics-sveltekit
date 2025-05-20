@@ -7,6 +7,7 @@
   import { logDebug, logError } from '$lib/utils/secureLogger';
   import { parseAIMessageContent } from '$lib/utils/markdownParser';
   import AdminLayout from '$lib/components/admin/AdminLayout.svelte';
+  import SafeHtml from '$lib/components/common/SafeHtml.svelte';
   import type { ConversationListItem } from '$lib/types/conversations';
   import { fade, fly } from 'svelte/transition';
 
@@ -696,7 +697,7 @@
                                   AI
                                 </div>
                                 <div class="prose prose-sm max-w-none">
-                                  {@html renderMessageContent(msgItem.message)}
+                                  <SafeHtml html={renderMessageContent(msgItem.message)} />
                                 </div>
                               </div>
                             </div>

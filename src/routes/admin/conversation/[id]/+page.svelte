@@ -9,6 +9,7 @@
   import { logDebug, logError } from '$lib/utils/secureLogger';
   import { parseAIMessageContent } from '$lib/utils/markdownParser';
   import AdminLayout from '$lib/components/admin/AdminLayout.svelte';
+  import SafeHtml from '$lib/components/common/SafeHtml.svelte';
   import type { ConversationDetail } from '$lib/types/conversations';
 
   // State
@@ -170,7 +171,9 @@
                 </div>
                 <div class="prose prose-sm max-w-none">
                   {#if parsedMessage.role === 'ai' || parsedMessage.role === 'assistant'}
-                    <div class="whitespace-pre-wrap">{@html parseAIMessageContent(parsedMessage.content || '')}</div>
+                    <div class="whitespace-pre-wrap">
+                      <SafeHtml html={parseAIMessageContent(parsedMessage.content || '')} />
+                    </div>
                   {:else}
                     <div class="whitespace-pre-wrap">{parsedMessage.content}</div>
                   {/if}

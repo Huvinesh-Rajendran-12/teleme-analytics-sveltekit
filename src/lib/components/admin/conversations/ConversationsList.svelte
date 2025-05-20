@@ -6,6 +6,7 @@ import { parseMessage } from '$lib/utils/messageParser';
 import { getApplicationDisplayName } from '$lib/config/admin';
 import { logDebug, logError } from '$lib/utils/secureLogger';
 import { parseAIMessageContent } from '$lib/utils/markdownParser';
+import SafeHtml from '../../../components/common/SafeHtml.svelte';
 // 'SvelteComponent' is not used, removing import
 // import { SvelteComponent } from 'svelte';
 
@@ -279,7 +280,7 @@ function decrementPage() {
                             <div class="rounded-md bg-blue-50 p-3 mb-2">
                               <b>AI:</b>
                               <div class="prose prose-sm max-w-none inline-block align-top">
-                                {@html renderedMsg.content}
+                                <SafeHtml html={renderedMsg.content} />
                               </div>
                             </div>
                           {:else if renderedMsg.role === 'human'}

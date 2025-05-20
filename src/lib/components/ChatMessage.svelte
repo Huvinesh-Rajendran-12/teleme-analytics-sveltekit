@@ -1,6 +1,7 @@
 <script lang="ts">
   import { parseMarkdown } from '$lib/utils/markdownParser';
   import type { Message } from '$lib/types';
+  import SafeHtml from './common/SafeHtml.svelte';
 
   export let message: Message;
 
@@ -25,7 +26,7 @@
 
 <div class={`p-4 rounded-lg max-w-4xl ${message.role === 'user' ? 'bg-blue-50 ml-auto' : 'bg-white shadow-sm'}`}>
   <div class="prose prose-sm">
-    {@html displayContent}
+    <SafeHtml html={displayContent} />
   </div>
 </div>
 

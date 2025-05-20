@@ -84,19 +84,23 @@ export default [
       }
     },
     rules: {
-      // Recommended Svelte rules
-      ...sveltePlugin.configs.recommended,
-      // Add the same TypeScript rules here to apply them to <script lang="ts"> blocks
+      // Add the TS and general rules directly
       '@typescript-eslint/no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_', destructuredArrayIgnorePattern: '^_' }
       ],
       '@typescript-eslint/no-explicit-any': 'warn',
-      'no-console': ['warn', { allow: ['warn', 'error', 'debug', 'info'] }]
-
-      // You might also add Svelte-specific accessibility rules from sveltePlugin.configs.accessibility
-      // e.g., ...sveltePlugin.configs.accessibility.rules,
-      // or other specific rules as needed.
+      'no-console': ['warn', { allow: ['warn', 'error', 'debug', 'info'] }],
+      
+      // Svelte rules - explicitly set individual rules instead of spreading
+      'svelte/valid-compile': 'error',
+      'svelte/no-at-html-tags': 'off', // Turned off since we use sanitized HTML rendering
+      'svelte/no-unused-svelte-ignore': 'warn',
+      'svelte/valid-each-key': 'error'
+      
+      // You might also add Svelte-specific accessibility rules individually
+      // 'svelte/a11y-click-events-have-key-events': 'warn',
+      // etc.
     }
   }
 ];

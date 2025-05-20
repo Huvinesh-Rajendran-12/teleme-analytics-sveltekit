@@ -5,6 +5,7 @@
   import { getStoredAdminToken, clearAdminToken } from '$lib/utils/auth';
   import { logDebug } from '$lib/utils/secureLogger';
   import { fade, fly } from 'svelte/transition';
+  import SafeHtml from '../common/SafeHtml.svelte';
 
   // Props
   export let isLoginPage = false;
@@ -143,7 +144,7 @@
                     ? 'text-blue-600'
                     : 'text-gray-500 group-hover:text-gray-600'}"
                 >
-                  {@html item.icon}
+                  <SafeHtml html={item.icon} allowSvg={true} />
                 </div>
                 {item.name}
               </a>
@@ -232,7 +233,7 @@
                     ? 'text-blue-600'
                     : 'text-gray-500 group-hover:text-gray-600'}"
                 >
-                  {@html item.icon}
+                  <SafeHtml html={item.icon} allowSvg={true} />
                 </div>
                 {item.name}
               </a>

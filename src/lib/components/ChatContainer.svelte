@@ -6,7 +6,7 @@
   import type { OptionsButtonType } from '$lib/types';
   import { n8nService } from '$lib/services/n8nService';
   import { ActivityTracker, shouldAddConnectionErrorMessage } from '$lib/utils/activityUtils';
-  import { connectionStatus, connectionStore } from '$lib/stores/connectionStore';
+  import { connectionStatus } from '$lib/stores/connectionStore';
   // import { parseAIMessageContent } from '$lib/utils/markdownParser';
   // Commented out unused import
   import {

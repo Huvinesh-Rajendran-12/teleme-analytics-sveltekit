@@ -15,7 +15,7 @@
   let manualModeEnabled = false;
   let localConnectionStatus = true;
   let checkingConnection = false;
-  let retryCount = 0;
+  // Store the retry count from the store instead of a local variable
   let demoInterval: number | null = null;
   
   // Toggle the connection status (for demo purposes)
@@ -38,9 +38,10 @@
       connectionStore.setStatus(online, 'demo');
       
       if (online) {
-        retryCount = 0;
+        // Reset retry count in store
+        connectionStore.reset();
       } else {
-        retryCount++;
+        // Increment retry count in store
         connectionStore.incrementRetryCount();
       }
       
@@ -88,7 +89,6 @@
   // Reset connection status
   function resetConnectionStatus() {
     connectionStore.reset();
-    retryCount = 0;
     localConnectionStatus = true;
   }
   

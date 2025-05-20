@@ -143,16 +143,17 @@
     });
 
     if (chatState.stage === 'welcome' && chatState.messages.length > 0) {
-      const newState = {
+      // Explicitly type newState to match ChatState structure and literal types
+      const newState: ChatState = {
         messages: [],
         loading: false,
-        stage: 'initial'
+        stage: 'initial' // This is a valid literal for ChatState['stage']
       };
       console.debug('Stage transition in startConversation: full reset', {
         from: chatState.stage,
         to: 'initial'
       });
-      chatState = newState;
+      chatState = newState; // This assignment is now valid because newState is typed as ChatState
       onRestartConversation();
 
       setTimeout(() => {
@@ -170,6 +171,7 @@
         from: chatState.stage,
         to: 'initial'
       });
+      // Directly assigning the literal string 'initial' also works
       chatState.stage = 'initial';
     }
   }
@@ -200,12 +202,6 @@
       return;
     }
 
-    const newState = {
-      ...chatState,
-      stage: 'asking_duration',
-      selectedOption: buttonId
-    };
-
     console.debug('Stage transition in handleInitialOption', {
       from: chatState.stage,
       to: 'asking_duration',
@@ -214,7 +210,13 @@
       selectedOption: buttonId
     });
 
-    chatState = newState;
+    // Directly update chatState with the literal 'asking_duration'
+    // This helps TypeScript infer the correct literal type for the 'stage' property
+    chatState = {
+      ...chatState,
+      stage: 'asking_duration',
+      selectedOption: buttonId
+    };
 
     addMessage('user', button.label);
     addMessage('assistant', 'Please select the duration for analysis:');
@@ -466,24 +468,24 @@
 
     switch (buttonId) {
       case 'back':
-        // Use the reactive assignment to ensure the component updates
-        const newState = {
-          ...chatState,
-          stage: 'initial',
-          // Ensure we reset the buttons with proper icons when going back to initial stage
-          selectedOption: undefined
-        };
+        // Use the reactive assignment directly to ensure the component updates
+        // This structure can help TypeScript infer the correct literal type for 'stage'
         console.debug('Stage transition in handlePostResponseOption: back button', {
-          from: chatState.stage,
+          from: chatState.stage, // Note: this log shows the state *before* the update
           to: 'initial',
           selectedOption: chatState.selectedOption,
           newSelectedOption: undefined
         });
-        chatState = newState;
+        chatState = {
+          ...chatState,
+          stage: 'initial', // Ensure this is correctly typed as the literal 'initial'
+          selectedOption: undefined // Clear the selected option state
+        };
         addMessage('assistant', 'What would you like to do with your data analytics?');
         break;
       case 'end':
         addMessage('assistant', 'Thank you for using our service. The conversation has ended.');
+        // Use reactive assignment directly
         chatState = { ...chatState, stage: 'welcome' };
 
         // Clean up the activity tracker when user ends conversation manually
@@ -493,7 +495,7 @@
         break;
       case 'question':
         console.debug('Setting stage to question');
-        // Use the reactive assignment for the question state
+        // Use the reactive assignment directly
         chatState = { ...chatState, stage: 'question' };
         addMessage('assistant', 'What question would you like to ask?');
         console.debug('Current stage after update:', chatState.stage);

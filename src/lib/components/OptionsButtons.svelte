@@ -1,64 +1,50 @@
 <script lang="ts">
-import { Icon } from '$lib/icons';
-import { menuConfig } from '$lib/config';
+  import { Icon } from '$lib/icons';
 
-// Define the button type
-export let buttons: {
-  id: string;
-  label: string;
-  icon: string;
-  variant: "primary" | "secondary" | "ghost" | "gradient-blue-teal";
-  isVisible: boolean;
-  order: number;
-}[] = [];
+  // Define the button type
+  export let buttons: {
+    id: string;
+    label: string;
+    icon: string;
+    variant: 'primary' | 'secondary' | 'ghost' | 'gradient-blue-teal';
+    isVisible: boolean;
+    order: number;
+  }[] = [];
 
-// Props for callback function
-export let onSelect: (id: string) => void;
+  // Props for callback function
+  export let onSelect: (id: string) => void;
 
-// Map emoji icons to our custom icon names
-function getIconName(iconEmoji: string): string {
-  const iconMap: Record<string, string> = {
-    '📊': 'chart',
-    '🩺': 'diagnosis',
-    '💊': 'medicine',
-    '🔙': 'back',
-    '❓': 'question',
-    '👋': 'end'
-  };
-  
-  const result = iconMap[iconEmoji] || '';
-  console.debug('Mapping emoji to icon:', { 
-    emoji: iconEmoji, 
-    iconName: result,
-    mappingFound: !!result
-  });
-  return result;
-}
+  // Map emoji icons to our custom icon names
+  function getIconName(iconEmoji: string): string {
+    const iconMap: Record<string, string> = {
+      '📊': 'chart',
+      '🩺': 'diagnosis',
+      '💊': 'medicine',
+      '🔙': 'back',
+      '❓': 'question',
+      '👋': 'end'
+    };
 
-// Handle button click
-function handleSelect(id: string) {
-  console.debug('Option button clicked:', id);
-  onSelect(id);
-}
+    const result = iconMap[iconEmoji] || '';
+    console.debug('Mapping emoji to icon:', {
+      emoji: iconEmoji,
+      iconName: result,
+      mappingFound: !!result
+    });
+    return result;
+  }
 
-// Debug function to log button props
-function logButtons(buttons: typeof buttons) {
-  console.debug('Rendering buttons:', buttons.map(b => ({
-    id: b.id,
-    label: b.label,
-    icon: b.icon,
-    variant: b.variant,
-    isVisible: b.isVisible,
-    order: b.order
-  })));
-}
+  // Handle button click
+  function handleSelect(id: string) {
+    console.debug('Option button clicked:', id);
+    onSelect(id);
+  }
 
-// Call the debug function whenever buttons change
-$: logButtons(buttons);
+  // Call the debug function whenever buttons change
 </script>
 
 <div class="flex flex-wrap justify-center gap-3">
-  {#each buttons.filter(b => b.isVisible).sort((a, b) => a.order - b.order) as button}
+  {#each buttons.filter((b) => b.isVisible).sort((a, b) => a.order - b.order) as button}
     {@const iconToUse = button.icon}
     <button
       on:click={() => handleSelect(button.id)}
@@ -74,7 +60,11 @@ $: logButtons(buttons);
       {#if iconToUse}
         {#if getIconName(iconToUse)}
           <span class="option-icon">
-            <Icon name={getIconName(iconToUse)} size={22} color={button.variant === 'primary' ? '#FFFFFF' : undefined} />
+            <Icon
+              name={getIconName(iconToUse)}
+              size={22}
+              color={button.variant === 'primary' ? '#FFFFFF' : undefined}
+            />
           </span>
         {:else}
           <span class="option-icon">{iconToUse}</span>
@@ -102,7 +92,7 @@ $: logButtons(buttons);
   .option-button:hover {
     transform: translateY(-1px);
   }
-  
+
   .option-button:active {
     transform: translateY(0);
   }
@@ -117,9 +107,9 @@ $: logButtons(buttons);
   .option-label {
     white-space: nowrap;
   }
-  
+
   /* Add teal gradient for gradient buttons */
   :global(.bg-gradient-to-teal) {
-    background-image: linear-gradient(to right, #26A69A, #4DB6AC);
+    background-image: linear-gradient(to right, #26a69a, #4db6ac);
   }
 </style>

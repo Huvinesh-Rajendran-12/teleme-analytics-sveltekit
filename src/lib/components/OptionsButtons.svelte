@@ -1,5 +1,6 @@
 <script lang="ts">
 import { Icon } from '$lib/icons';
+import { menuConfig } from '$lib/config';
 
 // Define the button type
 export let buttons: {
@@ -37,6 +38,8 @@ function handleSelect(id: string) {
 
 <div class="flex flex-wrap justify-center gap-3">
   {#each buttons.filter(b => b.isVisible).sort((a, b) => a.order - b.order) as button}
+    {@const mainMenuItem = menuConfig.menuButtons.main.find(item => item.id === button.id)}
+    {@const iconToUse = mainMenuItem ? mainMenuItem.icon : button.icon}
     <button
       on:click={() => handleSelect(button.id)}
       class="option-button {button.variant === 'primary'
@@ -48,13 +51,13 @@ function handleSelect(id: string) {
             : 'bg-transparent hover:bg-teal-50 text-teal-700 border border-teal-200 hover:border-teal-300'}"
       aria-label={button.label}
     >
-      {#if button.icon}
-        {#if getIconName(button.icon)}
+      {#if iconToUse}
+        {#if getIconName(iconToUse)}
           <span class="option-icon">
-            <Icon name={getIconName(button.icon)} size={22} color={button.variant === 'primary' ? '#FFFFFF' : undefined} />
+            <Icon name={getIconName(iconToUse)} size={22} color={button.variant === 'primary' ? '#FFFFFF' : undefined} />
           </span>
         {:else}
-          <span class="option-icon">{button.icon}</span>
+          <span class="option-icon">{iconToUse}</span>
         {/if}
       {/if}
       <span class="option-label">{button.label}</span>

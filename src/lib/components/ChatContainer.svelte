@@ -6,6 +6,7 @@
   import type { OptionsButtonType } from '$lib/types';
   import { n8nService } from '$lib/services/n8nService';
   import { ActivityTracker, shouldAddConnectionErrorMessage } from '$lib/utils/activityUtils';
+  import { connectionStatus, connectionStore } from '$lib/stores/connectionStore';
   // import { parseAIMessageContent } from '$lib/utils/markdownParser';
   // Commented out unused import
   import {
@@ -36,7 +37,16 @@
     loading: false,
     stage: 'welcome'
   };
-  let isConnected = true;
+  let isConnected = true; // Keep for backward compatibility
+  
+  // Subscribe to the connection store
+  $: {
+    if ($connectionStatus.isConnected !== isConnected) {
+      // Update local state when store changes
+      isConnected = $connectionStatus.isConnected;
+      handleConnectionChange(isConnected);
+    }
+  }
   let durationInput = '12';
   let isScrolledAway = false;
   let durationError: string | null = null;
@@ -63,18 +73,28 @@
     }
   }
 
+  // Track last connection state to prevent duplicate messages
+  let lastConnectionState: boolean = true;
+  
   // Function to handle connection status changes
   function handleConnectionChange(connected: boolean) {
     console.debug(`Connection status changed to: ${connected}`);
-    isConnected = connected;
+    
+    // Only process if there's an actual state change
+    if (connected !== lastConnectionState) {
+      isConnected = connected;
+      lastConnectionState = connected;
 
-    // If connection restored and we were in a conversation
-    if (connected && chatState.stage === 'welcome' && chatState.messages.length > 0) {
-      addMessage(
-        'assistant',
-        'Connection restored! You can continue using the Analytics Assistant.'
-      );
-      chatState.stage = 'initial';
+      // If connection restored and we were in a conversation
+      if (connected && chatState.stage === 'welcome' && chatState.messages.length > 0) {
+        addMessage(
+          'assistant',
+          'Connection restored! You can continue using the Analytics Assistant.'
+        );
+        chatState.stage = 'initial';
+      }
+    } else {
+      console.debug('Connection state unchanged, skipping notification');
     }
   }
 
@@ -96,9 +116,9 @@
     const lastMessage = chatState.messages[chatState.messages.length - 1];
     const lastMessageContent = lastMessage ? lastMessage.content : undefined;
 
-    // Prevent adding duplicate connection error messages
+    // Prevent adding duplicate connection-related messages (both errors and restoration messages)
     if (role === 'assistant' && !shouldAddConnectionErrorMessage(content, lastMessageContent)) {
-      console.debug('Skipping duplicate connection error message');
+      console.debug('Skipping duplicate connection message');
       return;
     }
 
@@ -519,6 +539,8 @@
       timeoutMinutes: TIMEOUTS.analytics,
       connectionCheckEndpoint: ENDPOINTS.analytics,
       connectionCheckTimeout: CONNECTION_CHECK_TIMEOUT,
+      connectionCheckInterval: 30000, // Check every 30 seconds
+      serviceType: 'analytics', // Identify this service
       onInactivityTimeout: handleInactivityTimeout,
       onConnectionChange: handleConnectionChange,
       logDebug: console.debug,
@@ -565,15 +587,24 @@
   <ConnectionStatusBanner
     {isConnected}
     serviceType="analytics"
+    useConnectionStore={true}
     onRetry={async () => {
       if (activityTracker) {
         const online = await activityTracker.retryConnection();
-        if (online) {
+        
+        // Only add a message if we're transitioning from offline to online
+        if (online && !lastConnectionState) {
+          // This will be deduplicated by our shouldAddConnectionErrorMessage function
           addMessage('assistant', UI_TEXT.connection.restored.analytics);
+          
           if (chatState.stage === 'welcome') {
             chatState.stage = 'initial';
           }
+          
+          // Update our tracking variable
+          lastConnectionState = online;
         }
+        
         return online;
       }
       return false;

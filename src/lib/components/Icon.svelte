@@ -38,7 +38,8 @@
     MedicineIcon,
     ScrollToBottomIcon,
     MinimizeIcon,
-    CloseIcon
+    CloseIcon,
+    WifiOffIcon
   } from '$lib/icons';
   
   // Map icon names to components
@@ -75,7 +76,8 @@
     medicine: MedicineIcon,
     scrollToBottom: ScrollToBottomIcon,
     minimize: MinimizeIcon,
-    close: CloseIcon
+    close: CloseIcon,
+    'wifi-off': WifiOffIcon
   };
   
   // Get the requested icon component

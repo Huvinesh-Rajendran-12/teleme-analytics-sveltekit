@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, createEventDispatcher } from 'svelte';
   import { Icon } from '$lib/icons';
+  import { connectionStatus } from '$lib/stores/connectionStore';
   
   const dispatch = createEventDispatcher<{
     cancel: void;
@@ -9,6 +10,19 @@
   export let disabled = false;
   export let onSendQuestion: (message: string) => void;
   export let maxLength: number | undefined = undefined;
+  export let respectConnectionStatus: boolean = true;
+  
+  // Combine disabled prop with connection status
+  // Disable input for sending messages, but not for cancel operations
+  $: isDisabled = disabled || (respectConnectionStatus && !$connectionStatus.isConnected);
+  
+  // Separate variable to determine if the send button should be disabled
+  $: isSendDisabled = isDisabled || inputMessage.trim() === '' || charsOverLimit > 0;
+  
+  // Change placeholder text based on connection status
+  $: placeholderText = $connectionStatus.isConnected || !respectConnectionStatus
+    ? "Type your question here..."
+    : "Connection lost. Messages will be queued when reconnected.";
 
   onMount(() => {
     console.debug('ChatInput component mounted');
@@ -67,14 +81,14 @@
       rows="1"
       class="flex-grow resize-none overflow-auto py-3 px-4 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded-lg"
       style="min-height: 3rem; max-height: 150px;"
-      placeholder="Type your question here..."
+      placeholder={placeholderText}
       maxlength={maxLength}
-      {disabled}
+      disabled={isDisabled}
     ></textarea>
 
     <button
       on:click={() => dispatch('cancel')}
-      class="ml-2 mb-2 p-2 rounded-full bg-gray-300 hover:bg-gray-400 text-gray-700 focus:outline-none disabled:opacity-50 disabled:pointer-events-none relative overflow-hidden"
+      class="ml-2 mb-2 p-2 rounded-full bg-gray-300 hover:bg-gray-400 text-gray-700 focus:outline-none relative overflow-hidden"
       aria-label="Cancel"
     >
       <span class="relative z-10"><Icon name="close" size={20} /></span>
@@ -83,7 +97,7 @@
     <button
       on:click={handleSend}
       class="ml-2 mb-2 p-2 rounded-full send-button text-white focus:outline-none hover:send-button-hover disabled:opacity-50 disabled:pointer-events-none relative overflow-hidden"
-      disabled={inputMessage.trim() === '' || disabled || charsOverLimit > 0}
+      disabled={isSendDisabled}
       aria-label="Send message"
     >
       <span class="relative z-10"><Icon name="send" size={20} /></span>

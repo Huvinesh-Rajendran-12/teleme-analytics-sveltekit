@@ -458,9 +458,23 @@
     if ((id === 'ask' || id === 'reselect') && !isConnected) {
       const n8nEndpoint = import.meta.env.VITE_N8N_HEALTH_TRACKER_WEBHOOK_URL || '';
       const connectionStatus = await checkConnectionStatus(n8nEndpoint, CONNECTION_CHECK_TIMEOUT);
-      isConnected = connectionStatus;
+      
+      // Make sure to update the connection status based on the actual check
+      if (isConnected !== connectionStatus) {
+        isConnected = connectionStatus;
+        
+        // Only add a connection restored message if the connection is actually restored
+        if (connectionStatus) {
+          // The connection was restored
+          addMessage(
+            'assistant',
+            'Connection to the Health Tracker service has been restored. You can continue your session.'
+          );
+        }
+      }
 
-      if (!connectionStatus) {
+      // If still not connected, show error and return
+      if (!isConnected) {
         addMessage(
           'assistant',
           'Cannot connect to the Health Tracker service. Please check your network connection and try again later.'
@@ -484,13 +498,22 @@
       }
     } else if (id === 'reselect') {
       chatState.stage = 'date_selection';
+      
+      // Don't add "Please select a date range:" message if there's a connection error
+      // or if we've just shown a connection restored message
       const lastMsg = chatState.messages[chatState.messages.length - 1];
-      if (
-        !(
-          lastMsg?.role === 'assistant' &&
-          typeof lastMsg.content === 'string' &&
-          lastMsg.content.includes('Please select a date range:')
-        )
+      const isLastMsgConnectionRestored = lastMsg?.role === 'assistant' && 
+                                         typeof lastMsg.content === 'string' &&
+                                         (lastMsg.content.includes('Connection to the Health Tracker service has been restored') ||
+                                          lastMsg.content.includes('Connection restored'));
+      
+      // Only add the date range message if the last message wasn't about connections
+      if (!isLastMsgConnectionRestored && 
+          !(
+            lastMsg?.role === 'assistant' &&
+            typeof lastMsg.content === 'string' &&
+            lastMsg.content.includes('Please select a date range:')
+          )
       ) {
         addMessage('assistant', 'Please select a date range:');
       }

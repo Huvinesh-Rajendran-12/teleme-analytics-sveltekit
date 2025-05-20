@@ -179,11 +179,12 @@
     {#if sidebarOpen}
       <div
         class="fixed inset-0 z-30 bg-gray-600 bg-opacity-75 lg:hidden"
-        role="button"
+        role="dialog"
+        aria-modal="true"
         tabindex="0"
         on:click={() => (sidebarOpen = false)}
         on:keydown={(e) => {
-          if (e.key === 'Escape') sidebarOpen = false;
+          if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') sidebarOpen = false;
         }}
         transition:fade={{ duration: 150 }}
       ></div>

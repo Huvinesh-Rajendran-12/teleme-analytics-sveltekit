@@ -52,7 +52,10 @@ export default [
     },
     rules: {
       // Recommended TypeScript rules
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', destructuredArrayIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', destructuredArrayIgnorePattern: '^_' }
+      ],
       '@typescript-eslint/no-explicit-any': 'warn',
       // Common JS/TS rules
       'no-console': ['warn', { allow: ['warn', 'error', 'debug', 'info'] }]
@@ -82,11 +85,14 @@ export default [
     },
     rules: {
       // Recommended Svelte rules
-      ...sveltePlugin.configs.recommended.rules,
+      ...sveltePlugin.configs.recommended,
       // Add the same TypeScript rules here to apply them to <script lang="ts"> blocks
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', destructuredArrayIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', destructuredArrayIgnorePattern: '^_' }
+      ],
       '@typescript-eslint/no-explicit-any': 'warn',
-      'no-console': ['warn', { allow: ['warn', 'error', 'debug', 'info'] }],
+      'no-console': ['warn', { allow: ['warn', 'error', 'debug', 'info'] }]
 
       // You might also add Svelte-specific accessibility rules from sveltePlugin.configs.accessibility
       // e.g., ...sveltePlugin.configs.accessibility.rules,

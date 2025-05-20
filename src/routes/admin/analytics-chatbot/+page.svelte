@@ -825,6 +825,7 @@
                       )}
                     class="text-blue-600 hover:text-blue-800 rounded-full p-1.5 hover:bg-blue-50 transition-colors duration-150"
                     title="View detailed conversation"
+                    aria-label="View detailed conversation"
                   >
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path
@@ -845,6 +846,7 @@
                     on:click={() => toggleConversation(conversation.session_id)}
                     class="text-gray-600 hover:text-gray-800 rounded-full p-1.5 hover:bg-gray-100 transition-colors duration-150"
                     title="Toggle preview"
+                    aria-label="Toggle conversation preview"
                   >
                     <svg
                       class="h-5 w-5 transform {expanded[conversation.session_id]

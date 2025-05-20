@@ -9,6 +9,7 @@ export interface Message {
 export interface ChatState {
   messages: Message[];
   loading: boolean;
+  isProcessing?: boolean;
   stage:
     | "menu"
     | "summary"

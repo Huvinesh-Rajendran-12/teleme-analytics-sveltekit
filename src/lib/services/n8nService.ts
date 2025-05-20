@@ -25,6 +25,11 @@ const N8N_TIMEOUT = 60000; // 60 seconds default timeout
 // Track API calls for debugging (using a private counter for security)
 let apiCallCount = 0;
 
+// Store the current abort controller for active requests
+let currentController: AbortController | null = null;
+// Flag to track if abort was user-initiated
+let userInitiatedAbort = false;
+
 /**
  * N8n Service class for handling API communications with n8n instances
  */
@@ -36,6 +41,7 @@ class N8nService {
   private healthTrackerWebhookUrl?: string;
   private adminWebhookUrl?: string;
   private initialized: boolean = false;
+  private currentRequests: Map<string, AbortController> = new Map();
 
   constructor(config?: N8nConfig) {
     // Use provided config or default values
@@ -97,6 +103,12 @@ class N8nService {
       // Create AbortController for timeout handling
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), this.defaultTimeout);
+      
+      // Store the controller with a unique key based on sessionId and message
+      const requestKey = `${sessionId}-${Date.now()}`;
+      this.currentRequests.set(requestKey, controller);
+      // Also store in the global variable for easier access
+      currentController = controller;
 
       // Send request using fetch API
       const response = await fetch(url, {
@@ -115,8 +127,12 @@ class N8nService {
         signal: controller.signal
       });
 
-      // Clear the timeout
+      // Clear the timeout and remove from active requests
       clearTimeout(timeoutId);
+      this.currentRequests.delete(requestKey);
+      if (currentController === controller) {
+        currentController = null;
+      }
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -149,11 +165,21 @@ class N8nService {
       // Handle specific error types
       if (error instanceof Error) {
         // Handle abort/timeout errors
-        if (error.name === 'AbortError' || error.message.includes('timeout')) {
-          return {
-            success: false,
-            error: 'Connection timed out'
-          };
+        if (error.name === 'AbortError') {
+          // Check if this was a user-initiated abort
+          if (userInitiatedAbort) {
+            // This was intentionally cancelled by the user, do not treat as an error
+            return {
+              success: true,
+              data: 'Request cancelled by user'
+            };
+          } else {
+            // This was a timeout abort
+            return {
+              success: false,
+              error: 'Connection timed out'
+            };
+          }
         }
         // Handle network errors
         else if (error.message.includes('network') || error.message.includes('Network Error')) {
@@ -238,6 +264,12 @@ class N8nService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), this.defaultTimeout);
 
+      // Store the controller with a unique key based on sessionId and message
+      const requestKey = `${sessionId}-${Date.now()}`;
+      this.currentRequests.set(requestKey, controller);
+      // Also store in the global variable for easier access
+      currentController = controller;
+      
       // Send request
       const response = await fetch(url, {
         method: 'POST',
@@ -252,8 +284,12 @@ class N8nService {
         signal: controller.signal
       });
 
-      // Clear the timeout
+      // Clear the timeout and remove from active requests
       clearTimeout(timeoutId);
+      this.currentRequests.delete(requestKey);
+      if (currentController === controller) {
+        currentController = null;
+      }
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -286,11 +322,21 @@ class N8nService {
       // Handle specific error types
       if (error instanceof Error) {
         // Handle abort/timeout errors
-        if (error.name === 'AbortError' || error.message.includes('timeout')) {
-          return {
-            success: false,
-            error: 'Connection timed out'
-          };
+        if (error.name === 'AbortError') {
+          // Check if this was a user-initiated abort
+          if (userInitiatedAbort) {
+            // This was intentionally cancelled by the user, do not treat as an error
+            return {
+              success: true,
+              data: 'Request cancelled by user'
+            };
+          } else {
+            // This was a timeout abort
+            return {
+              success: false,
+              error: 'Connection timed out'
+            };
+          }
         }
         // Handle network errors
         else if (error.message.includes('network') || error.message.includes('Network Error')) {
@@ -365,6 +411,12 @@ class N8nService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), this.defaultTimeout);
 
+      // Store the controller with a unique key
+      const requestKey = `default-${Date.now()}`;
+      this.currentRequests.set(requestKey, controller);
+      // Also store in the global variable for easier access
+      currentController = controller;
+      
       // Send request
       const response = await fetch(url, {
         method: 'POST',
@@ -373,8 +425,12 @@ class N8nService {
         signal: controller.signal
       });
 
-      // Clear the timeout
+      // Clear the timeout and remove from active requests
       clearTimeout(timeoutId);
+      this.currentRequests.delete(requestKey);
+      if (currentController === controller) {
+        currentController = null;
+      }
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -410,11 +466,21 @@ class N8nService {
 
       if (error instanceof Error) {
         // Handle abort/timeout errors
-        if (error.name === 'AbortError' || error.message.includes('timeout')) {
-          return {
-            success: false,
-            error: 'Connection timed out'
-          };
+        if (error.name === 'AbortError') {
+          // Check if this was a user-initiated abort
+          if (userInitiatedAbort) {
+            // This was intentionally cancelled by the user, do not treat as an error
+            return {
+              success: true,
+              data: 'Request cancelled by user'
+            };
+          } else {
+            // This was a timeout abort
+            return {
+              success: false,
+              error: 'Connection timed out'
+            };
+          }
         }
         // Handle network errors
         else if (error.message.includes('network') || error.message.includes('Network Error')) {
@@ -439,12 +505,62 @@ class N8nService {
   }
 
   /**
+   * Stop current request if any is in progress
+   * @returns true if a request was stopped, false otherwise
+   */
+  stopCurrentRequest(): boolean {
+    // Set the flag to indicate this is a user-initiated abort
+    userInitiatedAbort = true;
+    
+    // Try to abort using the global controller
+    if (currentController) {
+      currentController.abort('user_cancelled');
+      currentController = null;
+      logDebug('Aborted current request using global controller');
+      return true;
+    }
+    
+    // If that fails, try to abort all requests in the map
+    if (this.currentRequests.size > 0) {
+      let aborted = false;
+      this.currentRequests.forEach((controller, key) => {
+        controller.abort('user_cancelled');
+        this.currentRequests.delete(key);
+        aborted = true;
+      });
+      
+      if (aborted) {
+        logDebug(`Aborted ${this.currentRequests.size} pending requests`);
+        return true;
+      }
+    }
+    
+    return false;
+  }
+  
+  /**
+   * Check if the abort was initiated by the user
+   * @returns true if the abort was user-initiated
+   */
+  isUserInitiatedAbort(): boolean {
+    return userInitiatedAbort;
+  }
+  
+  /**
+   * Reset the user-initiated abort flag
+   */
+  resetUserInitiatedAbort(): void {
+    userInitiatedAbort = false;
+  }
+
+  /**
    * Cleanup function to handle any necessary resource cleanup.
    * Call this when the component using n8nService is unmounted.
    */
   cleanup() {
     logDebug('Cleaning up n8n service connection');
-    // Any cleanup logic here
+    this.stopCurrentRequest();
+    this.currentRequests.clear();
   }
 }
 

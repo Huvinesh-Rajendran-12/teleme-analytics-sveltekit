@@ -14,6 +14,7 @@
   import ChatOptions from './common/ChatOptions.svelte';
   import ScrollToBottomButton from './common/ScrollToBottomButton.svelte';
   import ChatInput from './ChatInput.svelte';
+  import StopProcessingButton from './common/StopProcessingButton.svelte';
   import type { Message } from '$lib/types';
 
   // Config
@@ -45,6 +46,8 @@
   // Note: used in fetchDataFromN8n
   let isScrolledAway = false;
   let initialFetchDone = false;
+  let isProcessing = false; // Track if we're waiting for a response from the server
+  let abortCheckTimeoutId: number | null = null; // For the abort check timeout
 
   // Activity tracker instance
   let activityTracker: ActivityTracker;
@@ -233,6 +236,35 @@
     return newId;
   };
 
+  // Function to stop processing
+  function stopProcessing() {
+    if (isProcessing) {
+      // Abort the current request
+      const stopped = n8nService.stopCurrentRequest();
+      if (stopped) {
+        isProcessing = false;
+        chatState.loading = false;
+        loadingState = 'idle';
+        // Add the message immediately so it appears right away
+        addMessage('assistant', 'Processing stopped. Is there anything else you would like to know?');
+        // Move to post_response stage to show options
+        chatState.stage = 'post_response';
+        
+        // Clear any existing timeout for the Abort error check
+        if (abortCheckTimeoutId) {
+          clearTimeout(abortCheckTimeoutId);
+        }
+        
+        // We need to reset the user abort flag with a slight delay
+        // to ensure it's still set when the service returns its response
+        abortCheckTimeoutId = window.setTimeout(() => {
+          n8nService.resetUserInitiatedAbort();
+          abortCheckTimeoutId = null;
+        }, 500);
+      }
+    }
+  }
+
   const fetchDataFromN8n = async (period = 1) => {
     logDebug('Attempting to fetch data from n8n');
     recordActivity();
@@ -258,6 +290,7 @@
 
       chatState.loading = false;
       loadingState = 'idle';
+      isProcessing = false;
       chatState.stage = 'error'; // Move to error stage if not connected
       return;
     }
@@ -269,6 +302,7 @@
 
     loadingState = 'connecting';
     chatState.loading = true;
+    isProcessing = true;
 
     const periodText = period === 1 ? '1 month' : period === 3 ? '3 months' : '6 months';
     const userMsgContent = `Summarize health tracker data for ${periodText}.`;
@@ -301,7 +335,16 @@
 
       loadingState = 'analyzing';
 
-      if (!result || !result.success) {
+      // Special handling for user-cancelled requests
+      if (n8nService.isUserInitiatedAbort() || (result && result.data === 'Request cancelled by user')) {
+        // No need to add a message here as it was already added in stopProcessing()
+        logDebug('Request was cancelled by user, skipping error message');
+        // Reset the flag after checking
+        n8nService.resetUserInitiatedAbort();
+        chatState.stage = 'post_response'; // Move to post-response stage
+      }
+      // Normal error handling
+      else if (!result || !result.success) {
         logError('Service call failed or returned error:', {
           error: result?.error,
           sessionId,
@@ -354,13 +397,25 @@
 
       chatState.loading = false;
       loadingState = 'idle';
+      isProcessing = false;
     } catch (error: unknown) {
       logError('Caught exception during fetchDataFromN8n:', error);
 
-      addMessage('assistant', 'An error occurred while fetching data. Please try again.');
+      // Check if this was caused by an abort
+      if (error instanceof Error && error.name === 'AbortError' && n8nService.isUserInitiatedAbort()) {
+        // Don't add a message here as it was already added in stopProcessing()
+        logDebug('Request was cancelled by user, skipping error message');
+      } else {
+        addMessage('assistant', 'An error occurred while fetching data. Please try again.');
+      }
+      
       chatState.loading = false;
       loadingState = 'idle';
+      isProcessing = false;
       chatState.stage = 'error'; // Move to error stage on unexpected fetch error
+      
+      // Reset the user-initiated abort flag
+      n8nService.resetUserInitiatedAbort();
     }
   };
 
@@ -560,6 +615,7 @@
     }
     chatState.loading = true;
     loadingState = 'processing';
+    isProcessing = true;
 
     addMessage('user', question);
 
@@ -574,7 +630,16 @@
 
       loadingState = 'analyzing';
 
-      if (!result?.success) {
+      // Special handling for user-cancelled requests
+      if (n8nService.isUserInitiatedAbort() || (result && result.data === 'Request cancelled by user')) {
+        // No need to add a message here as it was already added in stopProcessing()
+        logDebug('Request was cancelled by user, skipping error message');
+        // Reset the flag after checking
+        n8nService.resetUserInitiatedAbort();
+        chatState.stage = 'post_response'; // Move to post-response stage
+      }
+      // Normal error handling  
+      else if (!result?.success) {
         logError('Service reported an error for question:', {
           error: result?.error,
           sessionId,
@@ -624,17 +689,28 @@
       chatState.loading = false;
       chatState.stage = 'post_response';
       loadingState = 'idle';
+      isProcessing = false;
     } catch (error: unknown) {
       logError('Caught exception during handleSendQuestion:', error);
 
-      addMessage(
-        'assistant',
-        'An error occurred while processing your question. Please try again.'
-      );
+      // Check if this was caused by an abort
+      if (error instanceof Error && error.name === 'AbortError' && n8nService.isUserInitiatedAbort()) {
+        // Don't add a message here as it was already added in stopProcessing()
+        logDebug('Request was cancelled by user, skipping error message');
+      } else {
+        addMessage(
+          'assistant',
+          'An error occurred while processing your question. Please try again.'
+        );
+      }
 
       chatState.loading = false;
       chatState.stage = 'error'; // Move to error stage on unexpected question error
       loadingState = 'idle';
+      isProcessing = false;
+      
+      // Reset the user-initiated abort flag
+      n8nService.resetUserInitiatedAbort();
     }
   };
 
@@ -683,6 +759,12 @@
     logDebug('Component onDestroy');
     if (activityTracker) {
       activityTracker.cleanup();
+    }
+    
+    // Clean up abort check timeout if it exists
+    if (abortCheckTimeoutId) {
+      clearTimeout(abortCheckTimeoutId);
+      abortCheckTimeoutId = null;
     }
   });
 
@@ -781,8 +863,14 @@
 
       <!-- Loading indicator during ongoing conversation -->
       {#if chatState.loading && chatState.messages.length > 0}
-        <div class="flex justify-center items-center my-6">
+        <div class="flex flex-col justify-center items-center my-6">
           <LoadingIndicator state={loadingState} centered={true} />
+          <!-- Stop button -->
+          <StopProcessingButton 
+            isVisible={isProcessing} 
+            variant="default"
+            on:stop={stopProcessing}
+          />
         </div>
       {/if}
 
@@ -806,7 +894,8 @@
       <div class="px-4 md:px-8 lg:px-12 py-3 w-full">
         <ChatInput 
           onSendQuestion={handleSendQuestion} 
-          disabled={chatState.loading} 
+          disabled={chatState.loading}
+          isProcessing={isProcessing}
           on:cancel={() => {
             // Remove the last assistant message that asked for a question
             if (chatState.messages.length > 0 && 
@@ -817,6 +906,9 @@
             }
             // Return to post_response stage with the previous options
             chatState = { ...chatState, stage: 'post_response' };
+          }}
+          on:stop={() => {
+            stopProcessing();
           }}
         />
       </div>

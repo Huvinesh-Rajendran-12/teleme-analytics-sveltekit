@@ -3,12 +3,14 @@
   import DurationInput from './DurationInput.svelte';
   import type { OptionsButtonType } from '$lib/types';
   import { createEventDispatcher } from 'svelte';
+  import { Icon } from '$lib/icons';
   
   // Create a dispatcher to handle events
   const dispatch = createEventDispatcher<{
     select: string;
     startNew: void;
     submit: string;
+    stop: void;
   }>();
   
   // Props
@@ -17,6 +19,7 @@
   export let durationInput: string = '12';
   export let durationError: string | null = null;
   export let loading: boolean = false;
+  export let isProcessing: boolean = false;
   export let hasMessages: boolean = false;
   
   // Handle button selection
@@ -38,6 +41,11 @@
   // Handle duration change
   function handleDurationChange(event: CustomEvent<string>) {
     durationInput = event.detail;
+  }
+  
+  // Handle stop button click
+  function handleStop() {
+    dispatch('stop');
   }
 </script>
 
@@ -81,6 +89,16 @@
         </div>
         <span class="pulse-wave"></span>
       </button>
+      
+      {#if loading && isProcessing}
+        <button
+          on:click={handleStop}
+          class="ml-3 bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-5 rounded-full flex items-center"
+        >
+          <span class="mr-1"><Icon name="close" size={16} /></span>
+          <span>Stop</span>
+        </button>
+      {/if}
     </div>
     {#if durationError}
       <div class="text-red-500 text-sm mt-2 text-center">

@@ -7,6 +7,7 @@
   import { n8nService } from '$lib/services/n8nService';
   import { ActivityTracker, shouldAddConnectionErrorMessage } from '$lib/utils/activityUtils';
   import { connectionStatus } from '$lib/stores/connectionStore';
+  import StopProcessingButton from './common/StopProcessingButton.svelte';
   // import { parseAIMessageContent } from '$lib/utils/markdownParser';
   // Commented out unused import
   import {
@@ -38,7 +39,9 @@
     stage: 'welcome'
   };
   let isConnected = true; // Keep for backward compatibility
-  
+  let isProcessing = false; // Track if we're waiting for a response
+  let abortCheckTimeoutId: number | null = null; // For the abort check timeout
+
   // Subscribe to the connection store
   $: {
     if ($connectionStatus.isConnected !== isConnected) {
@@ -75,11 +78,11 @@
 
   // Track last connection state to prevent duplicate messages
   let lastConnectionState: boolean = true;
-  
+
   // Function to handle connection status changes
   function handleConnectionChange(connected: boolean) {
     console.debug(`Connection status changed to: ${connected}`);
-    
+
     // Only process if there's an actual state change
     if (connected !== lastConnectionState) {
       isConnected = connected;
@@ -189,6 +192,37 @@
     addMessage('assistant', 'Please select the duration for analysis:');
   }
 
+  // Function to stop processing
+  function stopProcessing() {
+    if (isProcessing) {
+      // Abort the current request
+      const stopped = n8nService.stopCurrentRequest();
+      if (stopped) {
+        isProcessing = false;
+        chatState.loading = false;
+        // Add the message immediately so it appears right away
+        addMessage(
+          'assistant',
+          'Processing stopped. Is there anything else you would like to know?'
+        );
+        // Move to summary stage to show options
+        chatState.stage = 'summary';
+
+        // Clear any existing timeout for the Abort error check
+        if (abortCheckTimeoutId) {
+          clearTimeout(abortCheckTimeoutId);
+        }
+
+        // We need to reset the user abort flag with a slight delay
+        // to ensure it's still set when the service returns its response
+        abortCheckTimeoutId = window.setTimeout(() => {
+          n8nService.resetUserInitiatedAbort();
+          abortCheckTimeoutId = null;
+        }, 500);
+      }
+    }
+  }
+
   async function handleDurationSubmit() {
     durationError = null; // Clear previous errors
     const duration = parseInt(durationInput, 10);
@@ -200,16 +234,16 @@
       chatState.loading = false;
       return; // Stop execution if validation fails
     }
-    
+
     // Check for required parameters before proceeding
     if (!params?.sessionId || !params?.centre_id || !params?.centre_name) {
-      console.warn('Missing required parameters for analytics:', { 
+      console.warn('Missing required parameters for analytics:', {
         sessionId: params?.sessionId ? 'present' : 'missing',
         centre_id: params?.centre_id ? 'present' : 'missing',
         centre_name: params?.centre_name ? 'present' : 'missing',
         auth_token: params?.auth_token ? 'present' : 'missing'
       });
-      
+
       addMessage(
         'assistant',
         'Unable to process request: Missing required session information. Please refresh the page and try again.'
@@ -219,6 +253,7 @@
     }
 
     chatState.loading = true;
+    isProcessing = true;
 
     const option = chatState.selectedOption || 'summarize all data';
     addMessage('user', `Duration: ${duration} months`); // Use validated duration for display
@@ -242,7 +277,7 @@
 
       console.debug('Action selected', { action });
       console.debug('Action message prepared', { action_message });
-      console.debug('Params available for analytics', { 
+      console.debug('Params available for analytics', {
         sessionId: params.sessionId.substring(0, 8) + '...',
         centre_id: params.centre_id,
         auth_token: params.auth_token ? 'present' : 'missing'
@@ -250,11 +285,23 @@
       handleAnalyticsQuery(action_message);
     } catch (error) {
       console.error('Error handling option', error);
-      addMessage(
-        'assistant',
-        'An error occurred while processing your request. Please try again. If the problem persists, contact support.'
-      );
+
+      // Check if this was caused by an abort
+      if (error instanceof Error && error.name === 'AbortError') {
+        // Don't add a message here as it was already added in stopProcessing()
+        // This prevents duplicate messages
+      } else {
+        addMessage(
+          'assistant',
+          'An error occurred while processing your request. Please try again. If the problem persists, contact support.'
+        );
+      }
+
       chatState.loading = false;
+      isProcessing = false;
+
+      // Reset the user-initiated abort flag
+      n8nService.resetUserInitiatedAbort();
     }
   }
 
@@ -269,7 +316,7 @@
       chatState.stage = 'welcome'; // Move to welcome stage so user can restart
       return; // Stop execution if not connected
     }
-    
+
     // This check is redundant with the one in handleDurationSubmit, but we keep it for safety
     // and to handle direct calls to handleAnalyticsQuery from other places in the code
     if (!params?.auth_token) {
@@ -289,7 +336,7 @@
         centre_id: params?.centre_id ? 'present' : 'missing',
         centre_name: params?.centre_name ? 'present' : 'missing'
       });
-      
+
       addMessage(
         'assistant',
         'Unable to process request: Missing required session information. Please refresh the page and try again.'
@@ -306,7 +353,7 @@
         centre_id: params.centre_id,
         auth_token_present: params.auth_token ? true : false
       });
-      
+
       const result = await n8nService.callWithParams(
         params.sessionId,
         params.centre_id,
@@ -317,7 +364,15 @@
         params.is_ngo
       );
 
-      if (!result.success) {
+      // Special handling for user-cancelled requests
+      if (n8nService.isUserInitiatedAbort() || result.data === 'Request cancelled by user') {
+        // No need to add a message here as it was already added in stopProcessing()
+        console.debug('Request was cancelled by user, skipping error message');
+        // Reset the flag after checking
+        n8nService.resetUserInitiatedAbort();
+      }
+      // Normal error handling
+      else if (!result.success) {
         console.error('Error from n8n service', {
           error: result.error
         });
@@ -325,13 +380,19 @@
           'assistant',
           `Sorry, there was an error: ${result.error || 'An unknown error occurred. Please try again later.'}`
         );
-      } else if (result.data) {
+      }
+      // Handle successful responses
+      else if (result.data) {
         // Check if result.data is a string, otherwise use an error message
         const messageContent =
           typeof result.data === 'string'
             ? result.data
             : 'Sorry, I received an unexpected response format. Please try again.';
-        addMessage('assistant', messageContent);
+
+        // Only add the message if it's not from a cancellation
+        if (messageContent !== 'Request cancelled by user') {
+          addMessage('assistant', messageContent);
+        }
       } else {
         addMessage('assistant', 'No data received from the service.');
       }
@@ -341,14 +402,30 @@
         loading: false,
         stage: 'summary'
       };
+      isProcessing = false;
     } catch (error) {
       console.error('Error handling analytics query', error);
-      addMessage(
-        'assistant',
-        'Sorry, there was an error processing your request. Please try again.'
-      );
+
+      // Don't show errors for user-initiated aborts
+      if (
+        !(
+          error instanceof Error &&
+          error.name === 'AbortError' &&
+          n8nService.isUserInitiatedAbort()
+        )
+      ) {
+        addMessage(
+          'assistant',
+          'Sorry, there was an error processing your request. Please try again.'
+        );
+      }
+
       chatState.loading = false;
+      isProcessing = false;
     }
+
+    // Always reset the user-initiated abort flag after handling
+    n8nService.resetUserInitiatedAbort();
   }
 
   function handlePostResponseOption(buttonId: string) {
@@ -422,7 +499,7 @@
       chatState.stage = 'welcome'; // Move to welcome stage so user can restart
       return; // Stop execution if not connected
     }
-    
+
     // Verify required params before proceeding
     if (!params?.auth_token) {
       console.warn('Missing auth token for question submission');
@@ -440,7 +517,7 @@
         sessionId: params?.sessionId ? 'present' : 'missing',
         centre_id: params?.centre_id ? 'present' : 'missing'
       });
-      
+
       addMessage(
         'assistant',
         'Unable to process request: Missing required session information. Please refresh the page and try again.'
@@ -450,6 +527,7 @@
     }
 
     chatState.loading = true;
+    isProcessing = true;
     addMessage('user', question);
 
     // Wait for the DOM to update after adding the user message, then scroll
@@ -462,7 +540,7 @@
         centre_id: params.centre_id,
         auth_token_present: params.auth_token ? true : false
       });
-      
+
       const result = await n8nService.callWithParams(
         params.sessionId,
         params.centre_id,
@@ -473,7 +551,15 @@
         params.is_ngo
       );
 
-      if (!result.success) {
+      // Special handling for user-cancelled requests
+      if (n8nService.isUserInitiatedAbort() || result.data === 'Request cancelled by user') {
+        // No need to add a message here as it was already added in stopProcessing()
+        console.debug('Request was cancelled by user, skipping error message');
+        // Reset the flag after checking
+        n8nService.resetUserInitiatedAbort();
+      }
+      // Normal error handling
+      else if (!result.success) {
         console.error('Error from n8n service', {
           error: result.error
         });
@@ -481,13 +567,19 @@
           'assistant',
           `Sorry, there was an error: ${result.error || 'Unknown error occurred'}`
         );
-      } else if (result.data) {
+      }
+      // Handle successful responses
+      else if (result.data) {
         // Check if result.data is a string, otherwise use an error message
         const messageContent =
           typeof result.data === 'string'
             ? result.data
             : 'Sorry, I encountered an error processing that request. Please try again.';
-        addMessage('assistant', messageContent);
+
+        // Only add the message if it's not from a cancellation
+        if (messageContent !== 'Request cancelled by user') {
+          addMessage('assistant', messageContent);
+        }
       } else {
         addMessage('assistant', 'No data received from the service.');
       }
@@ -497,14 +589,30 @@
         loading: false,
         stage: 'summary'
       };
+      isProcessing = false;
     } catch (error) {
       console.error('Error sending question', error);
-      addMessage(
-        'assistant',
-        'An error occurred while processing your question. Please try again. If the problem persists, contact support.'
-      );
+
+      // Don't show errors for user-initiated aborts
+      if (
+        !(
+          error instanceof Error &&
+          error.name === 'AbortError' &&
+          n8nService.isUserInitiatedAbort()
+        )
+      ) {
+        addMessage(
+          'assistant',
+          'An error occurred while processing your question. Please try again. If the problem persists, contact support.'
+        );
+      }
+
       chatState.loading = false;
+      isProcessing = false;
     }
+
+    // Always reset the user-initiated abort flag after handling
+    n8nService.resetUserInitiatedAbort();
   }
 
   // afterUpdate hook removed as scrolling is now handled via tick() in handleSendQuestion
@@ -579,6 +687,12 @@
     if (activityTracker) {
       activityTracker.cleanup();
     }
+
+    // Clean up abort check timeout if it exists
+    if (abortCheckTimeoutId) {
+      clearTimeout(abortCheckTimeoutId);
+      abortCheckTimeoutId = null;
+    }
   });
 </script>
 
@@ -591,20 +705,20 @@
     onRetry={async () => {
       if (activityTracker) {
         const online = await activityTracker.retryConnection();
-        
+
         // Only add a message if we're transitioning from offline to online
         if (online && !lastConnectionState) {
           // This will be deduplicated by our shouldAddConnectionErrorMessage function
           addMessage('assistant', UI_TEXT.connection.restored.analytics);
-          
+
           if (chatState.stage === 'welcome') {
             chatState.stage = 'initial';
           }
-          
+
           // Update our tracking variable
           lastConnectionState = online;
         }
-        
+
         return online;
       }
       return false;
@@ -650,6 +764,7 @@
             {durationError}
             hasMessages={chatState.messages.length > 0}
             loading={chatState.loading}
+            {isProcessing}
             on:select={(e) => {
               if (chatState.stage === 'initial') {
                 handleInitialOption(e.detail);
@@ -658,6 +773,7 @@
               }
             }}
             on:submit={() => handleDurationSubmit()}
+            on:stop={() => stopProcessing()}
           />
         {/if}
 
@@ -685,8 +801,14 @@
       {/if}
 
       {#if chatState.loading}
-        <div class="flex justify-center items-center my-6">
+        <div class="flex flex-col justify-center items-center my-6">
           <LoadingIndicator state="processing" centered={true} />
+          <!-- Stop button -->
+          <StopProcessingButton
+            isVisible={isProcessing}
+            variant="default"
+            on:stop={stopProcessing}
+          />
         </div>
       {/if}
       <div bind:this={chatEndRef}></div>
@@ -707,17 +829,25 @@
         <ChatInput
           onSendQuestion={handleSendQuestion}
           disabled={chatState.loading}
+          {isProcessing}
           maxLength={MAX_QUESTION_LENGTH}
           on:cancel={() => {
             // Remove the last assistant message that asked for a question
-            if (chatState.messages.length > 0 && 
-                chatState.messages[chatState.messages.length - 1].role === 'assistant' &&
-                typeof chatState.messages[chatState.messages.length - 1].content === 'string' &&
-                (chatState.messages[chatState.messages.length - 1].content as string).includes('What question would you like to ask?')) {
+            if (
+              chatState.messages.length > 0 &&
+              chatState.messages[chatState.messages.length - 1].role === 'assistant' &&
+              typeof chatState.messages[chatState.messages.length - 1].content === 'string' &&
+              (chatState.messages[chatState.messages.length - 1].content as string).includes(
+                'What question would you like to ask?'
+              )
+            ) {
               chatState.messages = chatState.messages.slice(0, -1);
             }
             // Return to summary stage with post-response options
             chatState = { ...chatState, stage: 'summary' };
+          }}
+          on:stop={() => {
+            stopProcessing();
           }}
         />
       </div>

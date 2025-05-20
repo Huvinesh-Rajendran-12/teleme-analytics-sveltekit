@@ -2,12 +2,15 @@
   import { onMount, createEventDispatcher } from 'svelte';
   import { Icon } from '$lib/icons';
   import { connectionStatus } from '$lib/stores/connectionStore';
+  import { n8nService } from '$lib/services/n8nService';
   
   const dispatch = createEventDispatcher<{
     cancel: void;
+    stop: void;
   }>();
   
   export let disabled = false;
+  export let isProcessing = false; // Track if a response is being processed
   export let onSendQuestion: (message: string) => void;
   export let maxLength: number | undefined = undefined;
   export let respectConnectionStatus: boolean = true;
@@ -51,6 +54,14 @@
       inputElement.style.height = 'auto';
     }
   }
+  
+  function handleStop() {
+    if (isProcessing) {
+      // Abort the current request
+      n8nService.stopCurrentRequest();
+      dispatch('stop');
+    }
+  }
 
   function adjustTextareaHeight() {
     if (!inputElement) return;
@@ -86,13 +97,25 @@
       disabled={isDisabled}
     ></textarea>
 
-    <button
-      on:click={() => dispatch('cancel')}
-      class="ml-2 mb-2 p-2 rounded-full bg-gray-300 hover:bg-gray-400 text-gray-700 focus:outline-none relative overflow-hidden"
-      aria-label="Cancel"
-    >
-      <span class="relative z-10"><Icon name="close" size={20} /></span>
-    </button>
+    {#if isProcessing}
+      <!-- When processing, show stop button instead of cancel -->
+      <button
+        on:click={handleStop}
+        class="ml-2 mb-2 p-2 rounded-full bg-red-500 hover:bg-red-600 text-white focus:outline-none relative overflow-hidden"
+        aria-label="Stop Processing"
+      >
+        <span class="relative z-10"><Icon name="close" size={20} /></span>
+      </button>
+    {:else}
+      <!-- Regular cancel button when not processing -->
+      <button
+        on:click={() => dispatch('cancel')}
+        class="ml-2 mb-2 p-2 rounded-full bg-gray-300 hover:bg-gray-400 text-gray-700 focus:outline-none relative overflow-hidden"
+        aria-label="Cancel"
+      >
+        <span class="relative z-10"><Icon name="close" size={20} /></span>
+      </button>
+    {/if}
 
     <button
       on:click={handleSend}

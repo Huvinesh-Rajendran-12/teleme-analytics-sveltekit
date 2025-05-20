@@ -34,6 +34,7 @@ export { default as ScrollToBottomIcon } from './ScrollToBottomIcon.svelte';
 export { default as MinimizeIcon } from './MinimizeIcon.svelte';
 export { default as CloseIcon } from './CloseIcon.svelte';
 export { default as WifiOffIcon } from './WifiOffIcon.svelte';
+export { default as StopIcon } from './StopIcon.svelte';
 
 // Export the Icon component wrapper
 export { default as Icon } from '../components/Icon.svelte';

@@ -217,7 +217,8 @@ class N8nService {
     message: string,
     userId: string | number = '1160',
     application: string = 'analytics_chatbot',
-    patient_id?: string | number | null
+    patient_id?: string | number | null,
+    duration?: number | null // Added duration parameter
   ): Promise<N8nServiceResponse<string>> {
     // Track API calls for debugging
     apiCallCount++;
@@ -279,7 +280,8 @@ class N8nService {
           message: message,
           user_id: userId,
           application: application,
-          ...(application === 'health_tracker_summary' && patient_id !== null && { patient_id })
+          ...(application === 'health_tracker_summary' && patient_id !== null && { patient_id }),
+          ...(duration !== null && duration !== undefined && { duration }) // Added duration to body
         }),
         signal: controller.signal
       });

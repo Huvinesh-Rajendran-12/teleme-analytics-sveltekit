@@ -60,13 +60,45 @@
   // Activity tracker instance
   let activityTracker: ActivityTracker;
 
-  // Note: inactivityTimerRef is not actually needed as ActivityTracker handles the timer
+  // We use ActivityTracker for managing inactivity timeout - no need for separate timer refs
   let chatEndRef: HTMLDivElement;
   let chatContainer: HTMLDivElement;
 
   // Scroll to bottom function
   function scrollToBottom() {
     chatEndRef?.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // Function to initialize the activity tracker
+  function initActivityTracker() {
+    // Clean up any existing tracker
+    if (activityTracker) {
+      activityTracker.cleanup();
+    }
+    
+    // Create and initialize a new activity tracker
+    activityTracker = new ActivityTracker({
+      timeoutMinutes: TIMEOUTS.analytics,
+      connectionCheckEndpoint: ENDPOINTS.analytics,
+      connectionCheckTimeout: CONNECTION_CHECK_TIMEOUT,
+      connectionCheckInterval: 30000, // Check every 30 seconds
+      serviceType: 'analytics', // Identify this service
+      onInactivityTimeout: handleInactivityTimeout,
+      onConnectionChange: handleConnectionChange,
+      logDebug: console.debug,
+      logError: console.error,
+      pauseOnInvisible: false // DO NOT pause inactivity timer when tab loses focus
+    });
+
+    // Start tracking activity 
+    activityTracker.startInactivityTimer();
+    
+    // Attach chat container for specific tracking (scroll events) if available
+    if (chatContainer) {
+      activityTracker.attachElementListener(chatContainer);
+    }
+    
+    console.debug('Activity tracker initialized');
   }
 
   // Function to handle user activity
@@ -156,6 +188,17 @@ function handleConnectionChange(connected: boolean) {
       chatState = newState; // This assignment is now valid because newState is typed as ChatState
       onRestartConversation();
 
+      // Make sure the activity tracker is still active and record activity
+      if (activityTracker) {
+        // Record activity to reset the inactivity timer
+        activityTracker.recordActivity();
+        console.debug('Activity recorded for new conversation');
+      } else {
+        // If there's no activity tracker, initialize a new one
+        console.debug('Initializing new activity tracker for conversation restart');
+        initActivityTracker();
+      }
+
       setTimeout(() => {
         addMessage(
           'assistant',
@@ -173,6 +216,11 @@ function handleConnectionChange(connected: boolean) {
       });
       // Directly assigning the literal string 'initial' also works
       chatState.stage = 'initial';
+      
+      // Also record activity for this case
+      if (activityTracker) {
+        activityTracker.recordActivity();
+      }
     }
   }
 
@@ -188,9 +236,11 @@ function handleConnectionChange(connected: boolean) {
       loading: false
     };
 
-    // Clean up the activity tracker to stop monitoring events
+    // Don't clean up the tracker completely, just reset the timer
+    // This allows the timer to remain active even at the welcome screen
     if (activityTracker) {
-      activityTracker.cleanup();
+      // Record activity to reset the timer
+      activityTracker.recordActivity();
     }
   }
 
@@ -684,22 +734,8 @@ function handleConnectionChange(connected: boolean) {
       // Avoid logging sensitive params directly
     }
 
-    // Use centralized config for endpoints and timeouts
-    activityTracker = new ActivityTracker({
-      timeoutMinutes: TIMEOUTS.analytics,
-      connectionCheckEndpoint: ENDPOINTS.analytics,
-      connectionCheckTimeout: CONNECTION_CHECK_TIMEOUT,
-      connectionCheckInterval: 30000, // Check every 30 seconds
-      serviceType: 'analytics', // Identify this service
-      onInactivityTimeout: handleInactivityTimeout,
-      onConnectionChange: handleConnectionChange,
-      logDebug: console.debug,
-      logError: console.error
-    });
-
-    // Start tracking activity
-    activityTracker.startInactivityTimer();
-    activityTracker.attachActivityListeners();
+    // Initialize the activity tracker
+    initActivityTracker();
 
     // Initial connection status
     isConnected = activityTracker.getConnectionStatus();

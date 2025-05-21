@@ -1,7 +1,7 @@
 <script lang="ts">
   import BaseIcon from './BaseIcon.svelte';
 
-  export let size: number | string = '24';
+  export let size: number = 24;
   export let color: string = 'currentColor';
 </script>
 

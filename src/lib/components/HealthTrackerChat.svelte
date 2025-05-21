@@ -54,7 +54,7 @@
   // Activity tracker instance
   let activityTracker: ActivityTracker;
 
-  // No need for inactivityTimerId as it's managed by ActivityTracker
+  // We use ActivityTracker for managing inactivity timeout
   let chatEndRef: HTMLDivElement;
   let chatContainerRef: HTMLDivElement;
 
@@ -236,9 +236,45 @@
     recordActivity();
   };
 
+  // Function to initialize the activity tracker
+  function initActivityTracker() {
+    // Clean up any existing tracker
+    if (activityTracker) {
+      activityTracker.cleanup();
+    }
+    
+    // Create and initialize a new activity tracker
+    activityTracker = new ActivityTracker({
+      timeoutMinutes: HEALTH_TRACKER_TIMEOUT,
+      connectionCheckEndpoint: ENDPOINTS.healthTracker,
+      connectionCheckTimeout: CONNECTION_CHECK_TIMEOUT,
+      connectionCheckInterval: 30000, // Check every 30 seconds
+      serviceType: 'healthTracker', // Identify this service
+      onInactivityTimeout: handleInactivityTimeout,
+      onConnectionChange: handleConnectionChange,
+      logDebug: logDebug,
+      logError: logError,
+      pauseOnInvisible: false // DO NOT pause inactivity timer when tab loses focus
+    });
+
+    // Start tracking activity 
+    activityTracker.startInactivityTimer();
+    
+    // Attach chat container for specific tracking (scroll events) if available
+    if (chatContainerRef) {
+      activityTracker.attachElementListener(chatContainerRef);
+    }
+    
+    logDebug('Activity tracker initialized');
+  }
+
   const endConversation = (isError = false) => {
     logDebug('Ending conversation', { isError });
-    recordActivity();
+    
+    // Still record activity to reset timer
+    if (activityTracker) {
+      activityTracker.recordActivity();
+    }
 
     if (!isError) {
       const lastMsg = chatState.messages[chatState.messages.length - 1];
@@ -253,13 +289,8 @@
       }
     }
 
-    // Clean up inactivity timer
-    // No need to clear timer here - it's handled by activityTracker.cleanup()
-
-    // Clean up the activity tracker to stop monitoring events
-    if (activityTracker) {
-      activityTracker.cleanup();
-    }
+    // Don't clean up the tracker completely, just reset the timer to
+    // ensure it continues to track inactivity even at the welcome screen
 
     chatState = {
       messages: chatState.messages, // Keep existing messages
@@ -785,31 +816,20 @@
 
     // Endpoint is now used directly in the ActivityTracker config below
 
-    // Initialize the activity tracker with config values
-    activityTracker = new ActivityTracker({
-      timeoutMinutes: HEALTH_TRACKER_TIMEOUT,
-      connectionCheckEndpoint: ENDPOINTS.healthTracker,
-      connectionCheckTimeout: CONNECTION_CHECK_TIMEOUT,
-      onInactivityTimeout: handleInactivityTimeout,
-      onConnectionChange: handleConnectionChange,
-      logDebug: logDebug,
-      logError: logError
-    });
-
-    // Start tracking activity
-    activityTracker.startInactivityTimer();
-    activityTracker.attachActivityListeners(chatContainerRef);
+    // Initialize the activity tracker
+    initActivityTracker();
 
     // Initial connection status
     isConnected = activityTracker.getConnectionStatus();
 
-    // Additional component-specific event listener for scroll events
+    // Additional component-specific event listener for scroll events to update UI state
+    // This is separate from activity tracking
     chatContainerRef?.addEventListener('scroll', handleScrollEvent);
 
     return () => {
       logDebug('Component onDestroy cleanup');
       if (activityTracker) {
-        activityTracker.cleanup();
+        activityTracker.cleanup(); // This handles unregistering from observer too
       }
       if (n8nService?.cleanup) n8nService.cleanup();
       chatContainerRef?.removeEventListener('scroll', handleScrollEvent);

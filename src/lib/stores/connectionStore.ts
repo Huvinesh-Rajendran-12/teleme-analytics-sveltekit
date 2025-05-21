@@ -24,47 +24,62 @@ export const connectionStatus = writable<ConnectionState>(initialState);
 export const connectionStore = {
   // Update the connection status
   setStatus: (isConnected: boolean, service?: string) => {
-    connectionStatus.update(state => {
+    connectionStatus.update((state) => {
       // Update failed services list
       let failedServices = [...state.failedServices];
-      
+
       if (!isConnected && service && !failedServices.includes(service)) {
         failedServices.push(service);
       } else if (isConnected && service) {
-        failedServices = failedServices.filter(s => s !== service);
+        failedServices = failedServices.filter((s) => s !== service);
       } else if (isConnected) {
         failedServices = []; // Clear all if connection restored without specific service
       }
-      
+
       return {
         ...state,
         isConnected,
         lastChecked: Date.now(),
         failedServices,
         // Reset retry count if connected, increment otherwise
-        retryCount: isConnected ? 0 : state.retryCount,
+        retryCount: isConnected ? 0 : state.retryCount
       };
     });
   },
-  
+
   // Set the retry status
   setRetrying: (isRetrying: boolean) => {
-    connectionStatus.update(state => ({
+    connectionStatus.update((state) => ({
       ...state,
       isRetrying
     }));
   },
-  
+
   // Increment retry count
   incrementRetryCount: () => {
-    connectionStatus.update(state => ({
+    connectionStatus.update((state) => ({
       ...state,
       retryCount: state.retryCount + 1
     }));
   },
-  
+
   // Reset connection status
   reset: () => {
     connectionStatus.set(initialState);
   }
 };
+
+// Add event listeners for browser online/offline events
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => {
+    connectionStore.setStatus(true);
+  });
+
+  window.addEventListener('offline', () => {
+    connectionStore.setStatus(false);
+  });
+
+  // Set initial status based on navigator.onLine
+  // This is important for cases where the user starts offline
+  connectionStore.setStatus(navigator.onLine);
+}

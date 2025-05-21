@@ -1,5 +1,8 @@
 import { checkConnectionStatus } from './connectionUtils';
 import { connectionStore } from '$lib/stores/connectionStore';
+import { ActivityObserver } from './activityObserver';
+import { activityStore } from '$lib/stores/activityStore';
+import { v7 as uuidv7 } from 'uuid';
 
 // Types for the activity tracker
 export interface ActivityTrackerOptions {
@@ -12,6 +15,7 @@ export interface ActivityTrackerOptions {
   onConnectionChange?: (isConnected: boolean) => void;
   logDebug?: (message: string, data?: Record<string, unknown>) => void;
   logError?: (message: string, data?: Record<string, unknown>) => void;
+  pauseOnInvisible?: boolean; // Whether to pause timer when tab/window loses focus
 }
 
 export class ActivityTracker {
@@ -20,17 +24,46 @@ export class ActivityTracker {
   private connectionCheckIntervalId: number | null = null;
   private isConnected: boolean = true;
   private options: ActivityTrackerOptions;
-  private _boundRecordActivity: () => void; // For consistent event listener removal
+  private isPaused: boolean = false;
+  private observer: ActivityObserver;
+  private elementListeners: Map<HTMLElement, () => void> = new Map();
+  private trackerId: string;
 
   constructor(options: ActivityTrackerOptions) {
+    this.trackerId = uuidv7().substring(0, 8);  // Short ID for tracking
     this.lastActivityTime = Date.now();
     this.options = {
       connectionCheckTimeout: 5000, // Default timeout is 5 seconds
       connectionCheckInterval: 30000, // Default to check every 30 seconds
       serviceType: 'generic', // Default service type
+      pauseOnInvisible: false, // By default, DO NOT pause timers when tab loses focus
       ...options
     };
-    this._boundRecordActivity = this.recordActivity.bind(this); // Initialize bound handler
+
+    // Get the observer singleton instance
+    this.observer = ActivityObserver.getInstance();
+    
+    // Register with the activity store
+    activityStore.registerTracker(this.trackerId, options.serviceType || 'generic');
+    
+    // Log status periodically (every 2 minutes) to help debug timer issues
+    if (typeof window !== 'undefined') {
+      window.setInterval(() => {
+        const inactiveTime = Date.now() - this.lastActivityTime;
+        const inactivityLimit = this.options.timeoutMinutes * 60 * 1000;
+        this.options.logDebug?.('Activity status check', {
+          trackerId: this.trackerId,
+          serviceType: this.options.serviceType,
+          inactiveTime: Math.floor(inactiveTime / 1000) + 's',
+          timeoutMinutes: this.options.timeoutMinutes,
+          timeLeft: Math.floor((inactivityLimit - inactiveTime) / 1000) + 's',
+          isPaused: this.isPaused,
+          isConnected: this.isConnected,
+          pauseOnInvisible: this.options.pauseOnInvisible,
+          hasTimerActive: this.inactivityTimerId !== null
+        });
+      }, 120000); // Log every 2 minutes
+    }
 
     // Default logging functions if not provided
     if (!this.options.logDebug) {
@@ -58,6 +91,9 @@ export class ActivityTracker {
 
     // Start periodic connection checks
     this.startPeriodicConnectionChecks();
+    
+    // Register with the activity observer
+    this.observer.registerTracker(this);
   }
 
   // Record user activity
@@ -86,20 +122,86 @@ export class ActivityTracker {
   public startInactivityTimer(): void {
     if (this.inactivityTimerId !== null) {
       window.clearInterval(this.inactivityTimerId);
+      this.inactivityTimerId = null;
     }
 
-    // Check for inactivity every 30 seconds
+    const CHECK_INTERVAL = 15000; // Check every 15 seconds (more frequent)
+    const inactivityLimit = this.options.timeoutMinutes * 60 * 1000;
+    
+    this.options.logDebug?.('Inactivity timer started', {
+      timeoutMinutes: this.options.timeoutMinutes,
+      inactivityLimitMs: inactivityLimit,
+      checkIntervalMs: CHECK_INTERVAL,
+      pauseOnInvisible: this.options.pauseOnInvisible
+    });
+
+    // Check for inactivity regularly
     this.inactivityTimerId = window.setInterval(() => {
+      // Skip the check if timer is paused
+      if (this.isPaused) {
+        this.options.logDebug?.('Inactivity check skipped - timer paused');
+        return;
+      }
+      
       const inactiveTime = Date.now() - this.lastActivityTime;
-      const inactivityLimit = this.options.timeoutMinutes * 60 * 1000;
+      
+      // Log the current inactive time (helpful for debugging)
+      if (inactiveTime > 60000) { // Only log if over 1 minute
+        this.options.logDebug?.('Inactivity check', {
+          inactiveTime,
+          inactivityLimit,
+          timeLeft: inactivityLimit - inactiveTime,
+          isPaused: this.isPaused,
+          timeoutMinutes: this.options.timeoutMinutes
+        });
+      }
 
       if (inactiveTime >= inactivityLimit) {
-        this.options.logDebug?.('Inactivity timeout reached');
+        this.options.logDebug?.('Inactivity timeout reached', {
+          inactiveTime,
+          inactivityLimit,
+          timeoutMinutes: this.options.timeoutMinutes
+        });
+        
+        // Execute the timeout callback
         this.options.onInactivityTimeout();
+        
+        // Clear the timer after timeout is triggered
+        if (this.inactivityTimerId !== null) {
+          window.clearInterval(this.inactivityTimerId);
+          this.inactivityTimerId = null;
+        }
       }
-    }, 30000); // Check every 30 seconds
+    }, CHECK_INTERVAL); 
+  }
 
-    this.options.logDebug?.('Inactivity timer started');
+  /**
+   * Pause the inactivity timer (stops timeout from triggering)
+   */
+  public pauseInactivityTimer(): void {
+    if (!this.isPaused) {
+      this.isPaused = true;
+      // Record current time to prevent timer expiry immediately after resuming
+      this.lastActivityTime = Date.now();
+      this.options.logDebug?.('Inactivity timer paused');
+    }
+  }
+
+  /**
+   * Resume the inactivity timer (allows timeout to trigger again)
+   */
+  public resumeInactivityTimer(): void {
+    if (this.isPaused) {
+      this.isPaused = false;
+      // Reset the last activity time to prevent immediate timeout
+      this.lastActivityTime = Date.now();
+      this.options.logDebug?.('Inactivity timer resumed');
+      
+      // Ensure timer is still running
+      if (!this.inactivityTimerId) {
+        this.startInactivityTimer();
+      }
+    }
   }
 
   // Check the connection status
@@ -148,6 +250,13 @@ export class ActivityTracker {
   // Get the current connection status
   public getConnectionStatus(): boolean {
     return this.isConnected;
+  }
+  
+  /**
+   * Check if this tracker should pause on visibility change
+   */
+  public shouldPauseOnInvisible(): boolean {
+    return !!this.options.pauseOnInvisible;
   }
 
   /**
@@ -219,42 +328,49 @@ export class ActivityTracker {
     // Stop connection checks
     this.stopPeriodicConnectionChecks();
 
-    // Remove any attached event listeners to prevent memory leaks
-    this.removeActivityListeners();
+    // Unregister from the activity observer
+    this.observer.unregisterTracker(this);
+    
+    // Unregister from the activity store
+    activityStore.unregisterTracker(this.trackerId);
+    
+    // Remove any attached element-specific listeners
+    this.removeAllElementListeners();
 
     this.options.logDebug?.('Activity tracker cleaned up');
   }
 
-  // Attach global event listeners for activity tracking
-  public attachActivityListeners(element?: HTMLElement): void {
-    const trackActivity = this._boundRecordActivity; // Use the bound handler
-
-    // Document-level events
-    document.addEventListener('mousedown', trackActivity);
-    document.addEventListener('keypress', trackActivity);
-    document.addEventListener('touchstart', trackActivity);
-
-    // Element-specific events if provided
-    if (element) {
-      element.addEventListener('scroll', trackActivity);
+  // Attach element-specific event listeners for activity tracking
+  public attachElementListener(element: HTMLElement): void {
+    if (!element) return;
+    
+    if (!this.elementListeners.has(element)) {
+      const boundRecordActivity = this.recordActivity.bind(this);
+      element.addEventListener('scroll', boundRecordActivity);
+      this.elementListeners.set(element, boundRecordActivity);
+      this.options.logDebug?.('Element listener attached');
     }
-
-    this.options.logDebug?.('Activity listeners attached');
   }
 
-  // Remove global event listeners
-  public removeActivityListeners(element?: HTMLElement): void {
-    const trackActivity = this._boundRecordActivity; // Use the bound handler
-
-    document.removeEventListener('mousedown', trackActivity);
-    document.removeEventListener('keypress', trackActivity);
-    document.removeEventListener('touchstart', trackActivity);
-
-    if (element) {
-      element.removeEventListener('scroll', trackActivity);
+  // Remove element-specific event listeners
+  public removeElementListener(element: HTMLElement): void {
+    if (!element) return;
+    
+    const listener = this.elementListeners.get(element);
+    if (listener) {
+      element.removeEventListener('scroll', listener);
+      this.elementListeners.delete(element);
+      this.options.logDebug?.('Element listener removed');
     }
-
-    this.options.logDebug?.('Activity listeners removed');
+  }
+  
+  // Remove all element listeners
+  private removeAllElementListeners(): void {
+    this.elementListeners.forEach((listener, element) => {
+      element.removeEventListener('scroll', listener);
+    });
+    this.elementListeners.clear();
+    this.options.logDebug?.('All element listeners removed');
   }
 }
 

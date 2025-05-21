@@ -80,7 +80,7 @@
   let lastConnectionState: boolean = true;
 
   // Function to handle connection status changes
-  function handleConnectionChange(connected: boolean) {
+function handleConnectionChange(connected: boolean) {
     console.debug(`Connection status changed to: ${connected}`);
 
     // Only process if there's an actual state change
@@ -253,9 +253,9 @@
     }
   }
 
-  async function handleDurationSubmit() {
+  async function handleDurationSubmit(durationString: string) {
     durationError = null; // Clear previous errors
-    const duration = parseInt(durationInput, 10);
+    const duration = parseInt(durationString, 10);
 
     // Validate input
     if (isNaN(duration) || !Number.isInteger(duration) || duration < 1 || duration > 60) {
@@ -296,13 +296,13 @@
       let action_message: string = '';
       if (option.toLowerCase() === 'summarize') {
         action = 'summarize';
-        action_message = `Summarize All Data for ${durationInput} months`;
+        action_message = `Summarize All Data for ${duration} months`;
       } else if (option.toLowerCase() === 'diagnoses') {
         action = 'diagnoses';
-        action_message = `Top 20 Diagnoses for ${durationInput} months`;
+        action_message = `Top 20 Diagnoses for ${duration} months`;
       } else if (option.toLowerCase() === 'medicines') {
         action = 'medicines';
-        action_message = `Top 10 Medicines for ${durationInput} months`;
+        action_message = `Top 10 Medicines for ${duration} months`;
       }
 
       console.debug('Action selected', { action });
@@ -814,8 +814,9 @@
               loading={chatState.loading}
               {isProcessing}
               on:select={(e) => handleInitialOption(e.detail)}
-              on:submit={() => handleDurationSubmit()}
+              on:submit={(e) => handleDurationSubmit(e.detail)}
               on:stop={() => stopProcessing()}
+              on:change={(e) => (durationInput = e.detail)}
             />
           {:else if chatState.stage === 'summary'}
             <!-- Summary stage - show conversation buttons -->
@@ -840,8 +841,9 @@
               loading={chatState.loading}
               {isProcessing}
               on:select={(e) => handlePostResponseOption(e.detail)}
-              on:submit={() => handleDurationSubmit()}
+              on:submit={(e) => handleDurationSubmit(e.detail)}
               on:stop={() => stopProcessing()}
+              on:change={(e) => (durationInput = e.detail)}
             />
           {:else}
             <!-- Other stages - show empty buttons array -->
@@ -860,8 +862,9 @@
                   handlePostResponseOption(e.detail);
                 }
               }}
-              on:submit={() => handleDurationSubmit()}
+              on:submit={(e) => handleDurationSubmit(e.detail)}
               on:stop={() => stopProcessing()}
+              on:change={(e) => (durationInput = e.detail)}
             />
           {/if}
         {/if}

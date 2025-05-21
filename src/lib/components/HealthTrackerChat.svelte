@@ -43,6 +43,8 @@
   let isConnected = true; // Connection status flag, will be verified on mount
   let loadingState: LoadingState = 'idle';
   let sessionId = uuidv7();
+  let selectedDuration: number | null = null; // Variable to store selected duration
+
   // Note: used in fetchDataFromN8n
   let isScrolledAway = false;
   let initialFetchDone = false;
@@ -548,6 +550,8 @@
     else if (option === '3months') period = 3;
     else if (option === '6months') period = 6;
 
+    selectedDuration = period; // Store the selected duration
+
     logDebug(`Fetching data for period: ${period} months`);
     fetchDataFromN8n(period);
   };
@@ -674,7 +678,8 @@
         question,
         userId,
         'health_tracker_summary',
-        patientId
+        patientId,
+        selectedDuration // Added duration
       );
 
       loadingState = 'analyzing';

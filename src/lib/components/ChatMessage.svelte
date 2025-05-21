@@ -3,6 +3,7 @@
   import type { Message } from '$lib/types';
   // import SafeHtml from './common/SafeHtml.svelte';
   import SvelteMarkdown from 'svelte-markdown';
+  import { parseMarkdown } from '$lib/utils/markdownParser';
 
   export let message: Message;
 
@@ -21,7 +22,7 @@
   }
 
   // Parse markdown content properly
-  $: rawContent = getMessageContent(message.content);
+  $: sanitizedContent = parseMarkdown(getMessageContent(message.content));
   // $: displayContent = parseMarkdown(rawContent);
 </script>
 
@@ -29,7 +30,7 @@
   class={`p-4 rounded-lg max-w-4xl ${message.role === 'user' ? 'bg-blue-50 ml-auto' : 'bg-white shadow-sm'}`}
 >
   <div class="prose prose-sm">
-    <SvelteMarkdown source={rawContent} />
+    <SvelteMarkdown source={sanitizedContent} />
   </div>
 </div>
 

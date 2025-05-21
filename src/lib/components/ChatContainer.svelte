@@ -188,16 +188,9 @@ function handleConnectionChange(connected: boolean) {
       chatState = newState; // This assignment is now valid because newState is typed as ChatState
       onRestartConversation();
 
-      // Make sure the activity tracker is still active and record activity
-      if (activityTracker) {
-        // Record activity to reset the inactivity timer
-        activityTracker.recordActivity();
-        console.debug('Activity recorded for new conversation');
-      } else {
-        // If there's no activity tracker, initialize a new one
-        console.debug('Initializing new activity tracker for conversation restart');
-        initActivityTracker();
-      }
+      // Initialize/re-initialize the activity tracker for the new conversation
+      initActivityTracker();
+      console.debug('Activity tracker initialized for new conversation');
 
       setTimeout(() => {
         addMessage(

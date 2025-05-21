@@ -501,12 +501,13 @@
 
   const startNewConversation = () => {
     logDebug('Starting new conversation');
-    recordActivity();
+    recordActivity(); // Record activity immediately
     chatState = {
       messages: [],
       loading: false,
       stage: 'date_selection'
     };
+    initActivityTracker(); // Re-initialize and start the tracker for the new conversation
     regenerateSessionId(); // Generate a new session ID for the new conversation
     addMessage('assistant', 'Please select a date range:');
     loadingState = 'idle';

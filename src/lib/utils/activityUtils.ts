@@ -20,6 +20,7 @@ export class ActivityTracker {
   private connectionCheckIntervalId: number | null = null;
   private isConnected: boolean = true;
   private options: ActivityTrackerOptions;
+  private _boundRecordActivity: () => void; // For consistent event listener removal
 
   constructor(options: ActivityTrackerOptions) {
     this.lastActivityTime = Date.now();
@@ -29,6 +30,7 @@ export class ActivityTracker {
       serviceType: 'generic', // Default service type
       ...options
     };
+    this._boundRecordActivity = this.recordActivity.bind(this); // Initialize bound handler
 
     // Default logging functions if not provided
     if (!this.options.logDebug) {
@@ -49,11 +51,11 @@ export class ActivityTracker {
       if (this.options.onConnectionChange) {
         this.options.onConnectionChange(connected);
       }
-      
+
       // Update the global connection store
       connectionStore.setStatus(connected, this.options.serviceType);
     });
-    
+
     // Start periodic connection checks
     this.startPeriodicConnectionChecks();
   }
@@ -72,7 +74,7 @@ export class ActivityTracker {
           if (this.options.onConnectionChange) {
             this.options.onConnectionChange(connected);
           }
-          
+
           // Update the global connection store
           connectionStore.setStatus(connected, this.options.serviceType);
         }
@@ -107,7 +109,7 @@ export class ActivityTracker {
         this.options.connectionCheckEndpoint,
         this.options.connectionCheckTimeout
       );
-      
+
       this.options.logDebug?.(`Connection check result: ${connected}`);
       return connected;
     } catch (error) {
@@ -121,21 +123,21 @@ export class ActivityTracker {
     // Update retry count in store
     connectionStore.incrementRetryCount();
     connectionStore.setRetrying(true);
-    
+
     try {
       const connected = await this.checkConnection();
-      
+
       // Update state and notify only if status changed
       if (connected !== this.isConnected) {
         this.isConnected = connected;
         if (this.options.onConnectionChange) {
           this.options.onConnectionChange(connected);
         }
-        
+
         // Update the global connection store
         connectionStore.setStatus(connected, this.options.serviceType);
       }
-      
+
       return connected;
     } finally {
       // Always reset retrying state
@@ -157,42 +159,45 @@ export class ActivityTracker {
       window.clearInterval(this.connectionCheckIntervalId);
       this.connectionCheckIntervalId = null;
     }
-    
+
     // Use provided interval or default from options
     const checkInterval = intervalMs || this.options.connectionCheckInterval;
-    
+
     this.connectionCheckIntervalId = window.setInterval(async () => {
       // Set retrying state in the store
       connectionStore.setRetrying(true);
-      
+
       try {
         const connected = await this.checkConnection();
-        
+
         // Update connection status if changed
         if (connected !== this.isConnected) {
           this.isConnected = connected;
-          
+
           // Notify listeners
           if (this.options.onConnectionChange) {
             this.options.onConnectionChange(connected);
           }
-          
+
           // Update the global connection store
           connectionStore.setStatus(connected, this.options.serviceType);
-          
+
           this.options.logDebug?.(`Connection status changed to: ${connected}`);
         }
       } catch (error) {
-        this.options.logError?.('Error during periodic connection check', error as Record<string, unknown>);
+        this.options.logError?.(
+          'Error during periodic connection check',
+          error as Record<string, unknown>
+        );
       } finally {
         // Reset retrying state
         connectionStore.setRetrying(false);
       }
     }, checkInterval);
-    
+
     this.options.logDebug?.(`Periodic connection checks started (interval: ${checkInterval}ms)`);
   }
-  
+
   /**
    * Stop periodic connection checks
    */
@@ -210,45 +215,45 @@ export class ActivityTracker {
       window.clearInterval(this.inactivityTimerId);
       this.inactivityTimerId = null;
     }
-    
+
     // Stop connection checks
     this.stopPeriodicConnectionChecks();
-    
+
     // Remove any attached event listeners to prevent memory leaks
     this.removeActivityListeners();
-    
+
     this.options.logDebug?.('Activity tracker cleaned up');
   }
 
   // Attach global event listeners for activity tracking
   public attachActivityListeners(element?: HTMLElement): void {
-    const trackActivity = () => this.recordActivity();
-    
+    const trackActivity = this._boundRecordActivity; // Use the bound handler
+
     // Document-level events
     document.addEventListener('mousedown', trackActivity);
     document.addEventListener('keypress', trackActivity);
     document.addEventListener('touchstart', trackActivity);
-    
+
     // Element-specific events if provided
     if (element) {
       element.addEventListener('scroll', trackActivity);
     }
-    
+
     this.options.logDebug?.('Activity listeners attached');
   }
-  
+
   // Remove global event listeners
   public removeActivityListeners(element?: HTMLElement): void {
-    const trackActivity = () => this.recordActivity();
-    
+    const trackActivity = this._boundRecordActivity; // Use the bound handler
+
     document.removeEventListener('mousedown', trackActivity);
     document.removeEventListener('keypress', trackActivity);
     document.removeEventListener('touchstart', trackActivity);
-    
+
     if (element) {
       element.removeEventListener('scroll', trackActivity);
     }
-    
+
     this.options.logDebug?.('Activity listeners removed');
   }
 }
@@ -263,9 +268,9 @@ export function isConnectionErrorMessage(content: string): boolean {
     'Connection to', // Only match "Connection to" for error messages, not restoration messages
     'Connection lost'
   ];
-  
-  return connectionErrorPatterns.some(pattern => 
-    typeof content === 'string' && content.includes(pattern)
+
+  return connectionErrorPatterns.some(
+    (pattern) => typeof content === 'string' && content.includes(pattern)
   );
 }
 
@@ -275,9 +280,9 @@ export function isConnectionRestoredMessage(content: string): boolean {
     'Connection to the .* has been restored',
     'Connection has been restored'
   ];
-  
-  return connectionRestoredPatterns.some(pattern => 
-    typeof content === 'string' && new RegExp(pattern, 'i').test(content)
+
+  return connectionRestoredPatterns.some(
+    (pattern) => typeof content === 'string' && new RegExp(pattern, 'i').test(content)
   );
 }
 
@@ -288,28 +293,28 @@ export function shouldAddConnectionErrorMessage(
 ): boolean {
   // Check if this is a restoration message
   const isRestorationMessage = isConnectionRestoredMessage(newContent);
-  
+
   // Check if this is an error message
   const isErrorMessage = isConnectionErrorMessage(newContent);
-  
+
   // If the message we're trying to add is not about connections at all, always add it
   if (!isErrorMessage && !isRestorationMessage) {
     return true;
   }
-  
+
   // If the last message exists and is a string
   if (lastMessageContent && typeof lastMessageContent === 'string') {
     // For error messages, don't add if the last message was also an error
     if (isErrorMessage) {
       return !isConnectionErrorMessage(lastMessageContent);
     }
-    
+
     // For restoration messages, don't add if the last message was also about restoration
     if (isRestorationMessage) {
       return !isConnectionRestoredMessage(lastMessageContent);
     }
   }
-  
+
   // Default: if there's no last message or it's not a string, add the message
   return true;
 }

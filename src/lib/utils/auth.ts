@@ -5,10 +5,7 @@ import { browser } from '$app/environment';
 import { logDebug, logError } from './secureLogger';
 
 // Determine if running in a development environment
-const isDev = browser && (
-  window.location.hostname === 'localhost' || 
-  window.location.hostname === '127.0.0.1'
-);
+const isDev = browser && import.meta.env.DEV;
 
 // Debug flag - set to true to enable detailed auth logging ONLY in dev
 const DEBUG_AUTH = isDev;

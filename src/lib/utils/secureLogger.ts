@@ -27,10 +27,7 @@ interface LoggerConfig {
 }
 
 // Default configuration based on environment
-const isDev = browser && (
-  window.location.hostname === 'localhost' || 
-  window.location.hostname === '127.0.0.1'
-);
+const isDev = browser && import.meta.env.DEV;
 
 // Get environment appropriate log level
 const getDefaultLogLevel = (): LogLevel => {

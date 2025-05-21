@@ -143,21 +143,57 @@
   // Now using the imported shouldAddConnectionErrorMessage utility function
 
   const addMessage = (role: 'user' | 'assistant', content: string | object) => {
-    const finalContent =
-      typeof content === 'string' && content.trim() === '' && role === 'assistant'
-        ? "Sorry, I couldn't generate a response. Please try again."
-        : typeof content === 'string' && content !== '[object Object]'
-          ? content.trim() !== ''
-            ? content.trim()
-            : "Sorry, I couldn't process that request due to an unexpected response from the service. Please try again."
-          : typeof content === 'object' && content !== null
-            ? content
-            : "Sorry, I couldn't process that request due to an unexpected response from the service. Please try again.";
+    let finalContent: string; // Ensure finalContent is always a string
 
-    if (typeof content !== 'string' || content === '[object Object]') {
-      logDebug('Attempted to add unexpected content, converting to placeholder', {
-        originalContent: content
-      });
+    const userFriendlyErrorMessage =
+      'Sorry, the assistant provided an unexpected response format. Please try again.';
+    const genericErrorMessage =
+      "Sorry, I couldn't process that request due to an unexpected response from the service. Please try again.";
+    const emptyResponseErrorMessage = "Sorry, I couldn't generate a response. Please try again.";
+
+    if (role === 'assistant') {
+      if (typeof content === 'object' && content !== null) {
+        // Assistant sent an object
+        finalContent = userFriendlyErrorMessage;
+        logDebug('Attempted to add object content for assistant, converting to error', {
+          originalContent: content
+        });
+      } else if (typeof content === 'string') {
+        if (content === '[object Object]') {
+          // Assistant sent the specific string "[object Object]"
+          finalContent = userFriendlyErrorMessage;
+          logDebug('Attempted to add "[object Object]" string for assistant, converting to error');
+        } else if (content.trim() === '') {
+          // Assistant sent an empty string
+          finalContent = emptyResponseErrorMessage;
+          logDebug('Attempted to add empty string content for assistant, converting to error');
+        } else {
+          // Valid assistant string
+          finalContent = content.trim();
+        }
+      } else {
+        // Assistant sent something else unexpected (e.g., null, undefined)
+        finalContent = genericErrorMessage;
+        logDebug('Attempted to add unexpected type content for assistant, converting to error', {
+          originalContent: content
+        });
+      }
+    } else {
+      // User message - should generally be a string
+      if (typeof content === 'string') {
+        finalContent = content.trim();
+        // Although unlikely for user input, handle if user somehow inputs this literal string
+        if (finalContent === '[object Object]') {
+          finalContent = genericErrorMessage;
+          logDebug('Attempted to add "[object Object]" string for user, converting to error');
+        }
+      } else {
+        // User sent something unexpected (object, null, etc.)
+        finalContent = genericErrorMessage;
+        logDebug('Attempted to add unexpected type content for user, converting to error', {
+          originalContent: content
+        });
+      }
     }
 
     // Get the last message content for duplicate checking
@@ -176,8 +212,9 @@
     let processedContent = finalContent;
 
     // Process AI message content with markdown parser
+    // finalContent is already guaranteed to be a string here for assistant messages
     if (role === 'assistant') {
-      processedContent = parseAIMessageContent(finalContent.toString());
+      processedContent = parseAIMessageContent(finalContent);
     }
 
     const newMessage: Message = {
@@ -246,15 +283,18 @@
         chatState.loading = false;
         loadingState = 'idle';
         // Add the message immediately so it appears right away
-        addMessage('assistant', 'Processing stopped. Is there anything else you would like to know?');
+        addMessage(
+          'assistant',
+          'Processing stopped. Is there anything else you would like to know?'
+        );
         // Move to post_response stage to show options
         chatState.stage = 'post_response';
-        
+
         // Clear any existing timeout for the Abort error check
         if (abortCheckTimeoutId) {
           clearTimeout(abortCheckTimeoutId);
         }
-        
+
         // We need to reset the user abort flag with a slight delay
         // to ensure it's still set when the service returns its response
         abortCheckTimeoutId = window.setTimeout(() => {
@@ -336,7 +376,10 @@
       loadingState = 'analyzing';
 
       // Special handling for user-cancelled requests
-      if (n8nService.isUserInitiatedAbort() || (result && result.data === 'Request cancelled by user')) {
+      if (
+        n8nService.isUserInitiatedAbort() ||
+        (result && result.data === 'Request cancelled by user')
+      ) {
         // No need to add a message here as it was already added in stopProcessing()
         logDebug('Request was cancelled by user, skipping error message');
         // Reset the flag after checking
@@ -402,18 +445,22 @@
       logError('Caught exception during fetchDataFromN8n:', error);
 
       // Check if this was caused by an abort
-      if (error instanceof Error && error.name === 'AbortError' && n8nService.isUserInitiatedAbort()) {
+      if (
+        error instanceof Error &&
+        error.name === 'AbortError' &&
+        n8nService.isUserInitiatedAbort()
+      ) {
         // Don't add a message here as it was already added in stopProcessing()
         logDebug('Request was cancelled by user, skipping error message');
       } else {
         addMessage('assistant', 'An error occurred while fetching data. Please try again.');
       }
-      
+
       chatState.loading = false;
       loadingState = 'idle';
       isProcessing = false;
       chatState.stage = 'error'; // Move to error stage on unexpected fetch error
-      
+
       // Reset the user-initiated abort flag
       n8nService.resetUserInitiatedAbort();
     }
@@ -513,11 +560,11 @@
     if ((id === 'ask' || id === 'reselect') && !isConnected) {
       const n8nEndpoint = import.meta.env.VITE_N8N_HEALTH_TRACKER_WEBHOOK_URL || '';
       const connectionStatus = await checkConnectionStatus(n8nEndpoint, CONNECTION_CHECK_TIMEOUT);
-      
+
       // Make sure to update the connection status based on the actual check
       if (isConnected !== connectionStatus) {
         isConnected = connectionStatus;
-        
+
         // Only add a connection restored message if the connection is actually restored
         if (connectionStatus) {
           // The connection was restored
@@ -553,22 +600,24 @@
       }
     } else if (id === 'reselect') {
       chatState.stage = 'date_selection';
-      
+
       // Don't add "Please select a date range:" message if there's a connection error
       // or if we've just shown a connection restored message
       const lastMsg = chatState.messages[chatState.messages.length - 1];
-      const isLastMsgConnectionRestored = lastMsg?.role === 'assistant' && 
-                                         typeof lastMsg.content === 'string' &&
-                                         (lastMsg.content.includes('Connection to the Health Tracker service has been restored') ||
-                                          lastMsg.content.includes('Connection restored'));
-      
+      const isLastMsgConnectionRestored =
+        lastMsg?.role === 'assistant' &&
+        typeof lastMsg.content === 'string' &&
+        (lastMsg.content.includes('Connection to the Health Tracker service has been restored') ||
+          lastMsg.content.includes('Connection restored'));
+
       // Only add the date range message if the last message wasn't about connections
-      if (!isLastMsgConnectionRestored && 
-          !(
-            lastMsg?.role === 'assistant' &&
-            typeof lastMsg.content === 'string' &&
-            lastMsg.content.includes('Please select a date range:')
-          )
+      if (
+        !isLastMsgConnectionRestored &&
+        !(
+          lastMsg?.role === 'assistant' &&
+          typeof lastMsg.content === 'string' &&
+          lastMsg.content.includes('Please select a date range:')
+        )
       ) {
         addMessage('assistant', 'Please select a date range:');
       }
@@ -631,14 +680,17 @@
       loadingState = 'analyzing';
 
       // Special handling for user-cancelled requests
-      if (n8nService.isUserInitiatedAbort() || (result && result.data === 'Request cancelled by user')) {
+      if (
+        n8nService.isUserInitiatedAbort() ||
+        (result && result.data === 'Request cancelled by user')
+      ) {
         // No need to add a message here as it was already added in stopProcessing()
         logDebug('Request was cancelled by user, skipping error message');
         // Reset the flag after checking
         n8nService.resetUserInitiatedAbort();
         chatState.stage = 'post_response'; // Move to post-response stage
       }
-      // Normal error handling  
+      // Normal error handling
       else if (!result?.success) {
         logError('Service reported an error for question:', {
           error: result?.error,
@@ -694,7 +746,11 @@
       logError('Caught exception during handleSendQuestion:', error);
 
       // Check if this was caused by an abort
-      if (error instanceof Error && error.name === 'AbortError' && n8nService.isUserInitiatedAbort()) {
+      if (
+        error instanceof Error &&
+        error.name === 'AbortError' &&
+        n8nService.isUserInitiatedAbort()
+      ) {
         // Don't add a message here as it was already added in stopProcessing()
         logDebug('Request was cancelled by user, skipping error message');
       } else {
@@ -708,7 +764,7 @@
       chatState.stage = 'error'; // Move to error stage on unexpected question error
       loadingState = 'idle';
       isProcessing = false;
-      
+
       // Reset the user-initiated abort flag
       n8nService.resetUserInitiatedAbort();
     }
@@ -760,7 +816,7 @@
     if (activityTracker) {
       activityTracker.cleanup();
     }
-    
+
     // Clean up abort check timeout if it exists
     if (abortCheckTimeoutId) {
       clearTimeout(abortCheckTimeoutId);
@@ -866,8 +922,8 @@
         <div class="flex flex-col justify-center items-center my-6">
           <LoadingIndicator state={loadingState} centered={true} />
           <!-- Stop button -->
-          <StopProcessingButton 
-            isVisible={isProcessing} 
+          <StopProcessingButton
+            isVisible={isProcessing}
             variant="default"
             on:stop={stopProcessing}
           />
@@ -892,16 +948,21 @@
   {#if chatState.stage === 'question'}
     <div class="w-full border-t border-gray-200 bg-white shadow-md">
       <div class="px-4 md:px-8 lg:px-12 py-3 w-full">
-        <ChatInput 
-          onSendQuestion={handleSendQuestion} 
+        <ChatInput
+          onSendQuestion={handleSendQuestion}
+          maxLength={1000}
           disabled={chatState.loading}
-          isProcessing={isProcessing}
+          {isProcessing}
           on:cancel={() => {
             // Remove the last assistant message that asked for a question
-            if (chatState.messages.length > 0 && 
-                chatState.messages[chatState.messages.length - 1].role === 'assistant' &&
-                typeof chatState.messages[chatState.messages.length - 1].content === 'string' &&
-                (chatState.messages[chatState.messages.length - 1].content as string).includes('What would you like to ask?')) {
+            if (
+              chatState.messages.length > 0 &&
+              chatState.messages[chatState.messages.length - 1].role === 'assistant' &&
+              typeof chatState.messages[chatState.messages.length - 1].content === 'string' &&
+              (chatState.messages[chatState.messages.length - 1].content as string).includes(
+                'What would you like to ask?'
+              )
+            ) {
               chatState.messages = chatState.messages.slice(0, -1);
             }
             // Return to post_response stage with the previous options

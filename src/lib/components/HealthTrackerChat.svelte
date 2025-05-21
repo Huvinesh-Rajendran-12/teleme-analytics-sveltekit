@@ -143,21 +143,49 @@
   // Now using the imported shouldAddConnectionErrorMessage utility function
 
   const addMessage = (role: 'user' | 'assistant', content: string | object) => {
-    const finalContent =
-      typeof content === 'string' && content.trim() === '' && role === 'assistant'
-        ? "Sorry, I couldn't generate a response. Please try again."
-        : typeof content === 'string' && content !== '[object Object]'
-          ? content.trim() !== ''
-            ? content.trim()
-            : "Sorry, I couldn't process that request due to an unexpected response from the service. Please try again."
-          : typeof content === 'object' && content !== null
-            ? content
-            : "Sorry, I couldn't process that request due to an unexpected response from the service. Please try again.";
+    let finalContent: string; // Ensure finalContent is always a string
 
-    if (typeof content !== 'string' || content === '[object Object]') {
-      logDebug('Attempted to add unexpected content, converting to placeholder', {
-        originalContent: content
-      });
+    const userFriendlyErrorMessage = "Sorry, the assistant provided an unexpected response format. Please try again.";
+    const genericErrorMessage = "Sorry, I couldn't process that request due to an unexpected response from the service. Please try again.";
+    const emptyResponseErrorMessage = "Sorry, I couldn't generate a response. Please try again.";
+
+    if (role === 'assistant') {
+      if (typeof content === 'object' && content !== null) {
+        // Assistant sent an object
+        finalContent = userFriendlyErrorMessage;
+        logDebug('Attempted to add object content for assistant, converting to error', { originalContent: content });
+      } else if (typeof content === 'string') {
+        if (content === '[object Object]') {
+          // Assistant sent the specific string "[object Object]"
+          finalContent = userFriendlyErrorMessage;
+          logDebug('Attempted to add "[object Object]" string for assistant, converting to error');
+        } else if (content.trim() === '') {
+          // Assistant sent an empty string
+          finalContent = emptyResponseErrorMessage;
+          logDebug('Attempted to add empty string content for assistant, converting to error');
+        } else {
+          // Valid assistant string
+          finalContent = content.trim();
+        }
+      } else {
+        // Assistant sent something else unexpected (e.g., null, undefined)
+        finalContent = genericErrorMessage;
+        logDebug('Attempted to add unexpected type content for assistant, converting to error', { originalContent: content });
+      }
+    } else {
+      // User message - should generally be a string
+      if (typeof content === 'string') {
+        finalContent = content.trim();
+        // Although unlikely for user input, handle if user somehow inputs this literal string
+        if (finalContent === '[object Object]') {
+           finalContent = genericErrorMessage;
+           logDebug('Attempted to add "[object Object]" string for user, converting to error');
+        }
+      } else {
+         // User sent something unexpected (object, null, etc.)
+         finalContent = genericErrorMessage;
+         logDebug('Attempted to add unexpected type content for user, converting to error', { originalContent: content });
+      }
     }
 
     // Get the last message content for duplicate checking
@@ -176,8 +204,9 @@
     let processedContent = finalContent;
 
     // Process AI message content with markdown parser
+    // finalContent is already guaranteed to be a string here for assistant messages
     if (role === 'assistant') {
-      processedContent = parseAIMessageContent(finalContent.toString());
+      processedContent = parseAIMessageContent(finalContent);
     }
 
     const newMessage: Message = {

@@ -28,8 +28,11 @@
       if (numValue < min && target.value !== '') target.value = min.toString();
     }
     
-    // Update the bound value and dispatch change event
+    // Update the bound value BEFORE modifying the input
     value = target.value;
+    
+    // Update the bound value and dispatch change event
+    target.value = value;
     dispatch('change', value);
   }
   

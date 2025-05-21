@@ -115,7 +115,7 @@ export function safeParseMarkdown(content: string): string {
   if (!content) return '';
   try {
     if (isLikelyMarkdown(content)) {
-      return parseMarkdown(content); // This already sanitizes
+      return DOMPurify.sanitize(parseMarkdown(content), purifyOptions); // Ensure sanitization even if parseMarkdown returns original on error
     }
     // If not likely markdown, still sanitize it as plain HTML before returning
     return DOMPurify.sanitize(content, purifyOptions); 

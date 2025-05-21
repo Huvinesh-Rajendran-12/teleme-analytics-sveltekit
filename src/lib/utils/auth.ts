@@ -4,8 +4,11 @@
 import { browser } from '$app/environment';
 import { logDebug, logError } from './secureLogger';
 
-// Debug flag - set to true to enable detailed auth logging
-const DEBUG_AUTH = true;
+// Determine if running in a development environment
+const isDev = browser && import.meta.env.DEV;
+
+// Debug flag - set to true to enable detailed auth logging ONLY in dev
+const DEBUG_AUTH = isDev;
 
 /**
  * Helper function to log auth-related debug messages

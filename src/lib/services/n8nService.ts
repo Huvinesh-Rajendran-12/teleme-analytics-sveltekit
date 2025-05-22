@@ -103,13 +103,12 @@ class N8nService {
   private getWebhookUrl(
     applicationType: 'analytics_chatbot' | 'health_tracker_summary' | string
   ): string | undefined {
-    if (applicationType === 'analytics_chatbot') {
-      return this.analyticsWebhookUrl;
-    } else if (applicationType === 'health_tracker_summary') {
-      return this.healthTrackerWebhookUrl;
-    }
-    // Potentially handle other types or a default if structure evolves
-    return undefined;
+    const webhookUrls: { [key: string]: string | undefined } = {
+      analytics_chatbot: this.analyticsWebhookUrl,
+      health_tracker_summary: this.healthTrackerWebhookUrl,
+      // Add other application types here if needed
+    };
+    return webhookUrls[applicationType];
   }
 
   private async _executeFetch<TResponseJson>(

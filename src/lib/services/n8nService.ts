@@ -180,11 +180,7 @@ class N8nService {
     } finally {
       clearTimeout(timeoutId);
       this.currentRequests.delete(requestKey);
-      if (this.userInitiatedAbort && this.currentRequests.size === 0) {
-        // Reset flag only if this abort was user-initiated AND no other requests are pending
-        // (which might also have been part of the same batch user abort action)
-        this.resetUserInitiatedAbort();
-      }
+      // Don't auto-reset the flag here - let the ChatContainer handle the timing
     }
   }
 

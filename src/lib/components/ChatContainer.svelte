@@ -268,9 +268,11 @@
   // Function to stop processing
   function stopProcessing() {
     if (isProcessing) {
+      console.debug('stopProcessing called - aborting request');
       // Abort the current request
       const stopped = n8nService.stopCurrentRequest();
       if (stopped) {
+        console.debug('Request aborted successfully, userInitiatedAbort flag set to:', n8nService.isUserInitiatedAbort());
         isProcessing = false;
         chatState.loading = false;
         // Add the message immediately so it appears right away
@@ -286,12 +288,13 @@
           clearTimeout(abortCheckTimeoutId);
         }
 
-        // We need to reset the user abort flag with a slight delay
+        // We need to reset the user abort flag with a longer delay
         // to ensure it's still set when the service returns its response
         abortCheckTimeoutId = window.setTimeout(() => {
+          console.debug('Timeout reached - resetting userInitiatedAbort flag');
           n8nService.resetUserInitiatedAbort();
           abortCheckTimeoutId = null;
-        }, 500);
+        }, 3000);
       }
     }
   }
@@ -359,22 +362,19 @@
     } catch (error) {
       console.error('Error handling option', error);
 
-      // Check if this was caused by an abort
-      if (error instanceof Error && error.name === 'AbortError') {
-        // Don't add a message here as it was already added in stopProcessing()
-        // This prevents duplicate messages
-      } else {
+      // Don't add a message if this was caused by user-initiated abort
+      if (!n8nService.isUserInitiatedAbort()) {
         addMessage(
           'assistant',
           'An error occurred while processing your request. Please try again. If the problem persists, contact support.'
         );
+        chatState.loading = false;
       }
 
-      chatState.loading = false;
       isProcessing = false;
 
-      // Reset the user-initiated abort flag
-      n8nService.resetUserInitiatedAbort();
+      // Note: Don't reset the user-initiated abort flag here
+      // Let the timeout in stopProcessing() handle it
     }
   }
 
@@ -437,72 +437,84 @@
         params.is_ngo
       );
 
-      // Special handling for user-cancelled requests
-      if (n8nService.isUserInitiatedAbort()) {
-        // No need to add a message here as it was already added in stopProcessing()
-        console.debug('Request was cancelled by user, skipping error message');
-        // Reset the flag after checking
-        n8nService.resetUserInitiatedAbort();
-      }
-      // Normal error handling
-      else if (!result.success) {
-        console.error('Error from n8n service', {
-          error: result.error
-        });
-        addMessage(
-          'assistant',
-          `Sorry, there was an error: ${result.error || 'An unknown error occurred. Please try again later.'}`
-        );
-      }
-      // Handle successful responses (result.success is true here)
-      if (typeof result.data === 'object' && result.data !== null && 'output' in result.data && typeof (result.data as { output: unknown }).output === 'string') {
-        // Expected successful response format { output: string }
-        const messageContent = (result.data as { output: string }).output;
-        // Only add the message if it's not from a cancellation and content is not empty
-        if (!n8nService.isUserInitiatedAbort() && messageContent.trim() !== '') {
-          addMessage('assistant', messageContent.trim());
-        } else if (messageContent.trim() === '') {
-           console.warn('Received empty message content from service');
-           addMessage('assistant', 'No data received from the service.');
+      // Only process the response if the request wasn't cancelled by the user
+      const isAborted = n8nService.isUserInitiatedAbort();
+      console.debug('handleAnalyticsQuery response check:', { 
+        isAborted, 
+        resultSuccess: result.success,
+        hasData: !!result.data
+      });
+      
+      if (!isAborted) {
+        // Normal error handling
+        if (!result.success) {
+          console.error('Error from n8n service', {
+            error: result.error
+          });
+          addMessage(
+            'assistant',
+            `Sorry, there was an error: ${result.error || 'An unknown error occurred. Please try again later.'}`
+          );
         }
-      } else {
-        // Handle unexpected successful response format or no data
-        console.error('Received unexpected data format from service', { data: result?.data });
-        addMessage(
-          'assistant',
-          'Sorry, I received an unexpected response format or no data. Please try again.'
-        );
-      }
+        // Handle successful responses (result.success is true here)
+        else if (
+          typeof result.data === 'object' &&
+          result.data !== null &&
+          'output' in result.data &&
+          typeof (result.data as { output: unknown }).output === 'string'
+        ) {
+          // Expected successful response format { output: string }
+          const messageContent = (result.data as { output: string }).output;
+          if (messageContent.trim() !== '') {
+            addMessage('assistant', messageContent.trim());
+          } else {
+            console.warn('Received empty message content from service');
+            addMessage('assistant', 'No data received from the service.');
+          }
+        } else {
+          // Handle unexpected successful response format or no data
+          console.error('Received unexpected data format from service', { data: result?.data });
+          addMessage(
+            'assistant',
+            'Sorry, I received an unexpected response format or no data. Please try again.'
+          );
+        }
 
-      chatState = {
-        ...chatState,
-        loading: false,
-        stage: 'summary'
-      };
+        chatState = {
+          ...chatState,
+          loading: false,
+          stage: 'summary'
+        };
+      } else {
+        console.debug('Skipping response processing - request was aborted by user');
+      }
       isProcessing = false;
     } catch (error) {
       console.error('Error handling analytics query', error);
 
       // Don't show errors for user-initiated aborts
-      if (
-        !(
-          error instanceof Error &&
-          error.name === 'AbortError' &&
-          n8nService.isUserInitiatedAbort()
-        )
-      ) {
+      const isAborted = n8nService.isUserInitiatedAbort();
+      console.debug('handleAnalyticsQuery error check:', { 
+        isAborted,
+        errorName: error instanceof Error ? error.name : 'unknown',
+        errorMessage: error instanceof Error ? error.message : 'unknown'
+      });
+      
+      if (!isAborted) {
         addMessage(
           'assistant',
           'Sorry, there was an error processing your request. Please try again.'
         );
+        chatState.loading = false;
+      } else {
+        console.debug('Skipping error message - request was aborted by user');
       }
-
-      chatState.loading = false;
+      
       isProcessing = false;
     }
 
-    // Always reset the user-initiated abort flag after handling
-    n8nService.resetUserInitiatedAbort();
+    // Note: Don't reset the user-initiated abort flag here
+    // Let the timeout in stopProcessing() handle it
   }
 
   function handlePostResponseOption(buttonId: string) {
@@ -640,66 +652,57 @@
         params.is_ngo
       );
 
-      // Special handling for user-cancelled requests
-      if (n8nService.isUserInitiatedAbort()) {
-        // No need to add a message here as it was already added in stopProcessing()
-        console.debug('Request was cancelled by user, skipping error message');
-        // Reset the flag after checking
-        n8nService.resetUserInitiatedAbort();
-      }
-      // Normal error handling
-      else if (!result.success) {
-        console.error('Error from n8n service', {
-          error: result.error
-        });
-        addMessage(
-          'assistant',
-          `Sorry, there was an error: ${result.error || 'Unknown error occurred'}`
-        );
-      }
-      // Handle successful responses
-      else if (result.data) {
-        // Check if result.data is a string, otherwise use an error message
-        const messageContent =
-          result.data && typeof result.data.output === 'string'
-            ? result.data.output
-            : 'Sorry, I encountered an error processing that request. Please try again.';
+      // Only process the response if the request wasn't cancelled by the user
+      if (!n8nService.isUserInitiatedAbort()) {
+        // Normal error handling
+        if (!result.success) {
+          console.error('Error from n8n service', {
+            error: result.error
+          });
+          addMessage(
+            'assistant',
+            `Sorry, there was an error: ${result.error || 'Unknown error occurred'}`
+          );
+        }
+        // Handle successful responses
+        else if (result.data) {
+          // Check if result.data is a string, otherwise use an error message
+          const messageContent =
+            result.data && typeof result.data.output === 'string'
+              ? result.data.output
+              : 'Sorry, I encountered an error processing that request. Please try again.';
 
-        // Only add the message if it's not from a cancellation
-        addMessage('assistant', messageContent);
+          addMessage('assistant', messageContent);
+        } else {
+          addMessage('assistant', 'No data received from the service.');
+        }
+
+        chatState = {
+          ...chatState,
+          loading: false,
+          stage: 'summary'
+        };
       } else {
-        addMessage('assistant', 'No data received from the service.');
+        console.debug('Request was cancelled by user, skipping response processing');
       }
-
-      chatState = {
-        ...chatState,
-        loading: false,
-        stage: 'summary'
-      };
       isProcessing = false;
     } catch (error) {
       console.error('Error sending question', error);
 
       // Don't show errors for user-initiated aborts
-      if (
-        !(
-          error instanceof Error &&
-          error.name === 'AbortError' &&
-          n8nService.isUserInitiatedAbort()
-        )
-      ) {
+      if (!n8nService.isUserInitiatedAbort()) {
         addMessage(
           'assistant',
           'An error occurred while processing your question. Please try again. If the problem persists, contact support.'
         );
+        chatState.loading = false;
       }
 
-      chatState.loading = false;
       isProcessing = false;
     }
 
-    // Always reset the user-initiated abort flag after handling
-    n8nService.resetUserInitiatedAbort();
+    // Note: Don't reset the user-initiated abort flag here  
+    // Let the timeout in stopProcessing() handle it
   }
 
   // afterUpdate hook removed as scrolling is now handled via tick() in handleSendQuestion

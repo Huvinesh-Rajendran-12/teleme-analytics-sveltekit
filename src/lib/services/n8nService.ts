@@ -1,3 +1,47 @@
+export class UserCancelledError extends Error {
+  constructor() {
+    super('Request cancelled by user');
+    this.name = 'UserCancelledError';
+  }
+}
+export class RequestTimeoutError extends Error {
+  constructor() {
+    super('Connection timed out');
+    this.name = 'RequestTimeoutError';
+  }
+}
+export class NetworkConnectionError extends Error {
+  constructor(originalMessage?: string) {
+    super(
+      originalMessage ||
+        'Network connection error. Please check your internet connection or try again in a few moments.'
+    );
+    this.name = 'NetworkConnectionError';
+  }
+}
+export class HttpError extends Error {
+  public status: number;
+  public errorText?: string;
+  constructor(status: number, statusText: string, errorText?: string) {
+    super(`API error: ${status} ${statusText}`);
+    this.name = 'HttpError';
+    this.status = status;
+    this.errorText = errorText;
+  }
+}
+
+// Payload type for callWithParams
+interface CallWithParamsPayload {
+  sessionId: string;
+  userId: string | number;
+  userName: string;
+  duration: number;
+  message: string;
+  application: 'analytics_chatbot' | 'health_tracker_summary'; // Can be more specific if only 'analytics_chatbot' or 'health_tracker_summary' are valid
+  is_ngo?: boolean | null;
+  patientId?: string | number | null;
+}
+
 import { logError, logDebug, logInfo } from '$lib/utils/secureLogger';
 
 // Define the response structure for n8n service calls
@@ -7,6 +51,11 @@ type N8nServiceResponse<T = unknown> = {
   error?: string;
 };
 
+// Type for the data structure expected from n8n webhooks
+type N8nOutputData = {
+  output: string;
+};
+
 // Configuration options for N8n service
 type N8nConfig = {
   baseUrl: string;
@@ -14,37 +63,30 @@ type N8nConfig = {
   defaultTimeout?: number;
 };
 
-// Default configuration values (would normally come from environment)
-const N8N_BASE_URL = '/api'; // Default API endpoint base for SvelteKit
-const N8N_API_KEY = ''; // Would come from environment in production
+// Custom Error Types and Payload Type (defined above or imported)
+
+// Default configuration values
+const N8N_BASE_URL = '/api';
+const N8N_API_KEY = '';
 const N8N_ANALYTICS_WEBHOOK_URL = import.meta.env.VITE_N8N_ANALYTICS_WEBHOOK_URL;
 const N8N_HEALTH_TRACKER_WEBHOOK_URL = import.meta.env.VITE_N8N_HEALTH_TRACKER_WEBHOOK_URL;
-const N8N_ADMIN_WEBHOOK_URL = import.meta.env.VITE_N8N_ADMIN_WEBHOOK_URL;
-const N8N_TIMEOUT = 60000; // 60 seconds default timeout
+const N8N_ADMIN_WEBHOOK_URL = import.meta.env.VITE_N8N_ADMIN_WEBHOOK_URL; // Kept for completeness, though no method uses it now
+const N8N_TIMEOUT = 60000;
 
-// Track API calls for debugging (using a private counter for security)
-let apiCallCount = 0;
+let apiCallCount = 0; // Module-level call count
 
-// Store the current abort controller for active requests
-let currentController: AbortController | null = null;
-// Flag to track if abort was user-initiated
-let userInitiatedAbort = false;
-
-/**
- * N8n Service class for handling API communications with n8n instances
- */
 class N8nService {
   private baseUrl: string;
   private apiKey?: string;
   private defaultTimeout: number;
   private analyticsWebhookUrl?: string;
   private healthTrackerWebhookUrl?: string;
-  private adminWebhookUrl?: string;
+  private adminWebhookUrl?: string; // Kept for completeness
   private initialized: boolean = false;
   private currentRequests: Map<string, AbortController> = new Map();
+  private userInitiatedAbort: boolean = false; // Instance-specific abort flag
 
   constructor(config?: N8nConfig) {
-    // Use provided config or default values
     this.baseUrl = (config?.baseUrl || N8N_BASE_URL).replace(/\/$/, '');
     this.apiKey = config?.apiKey || N8N_API_KEY;
     this.defaultTimeout = config?.defaultTimeout || N8N_TIMEOUT;
@@ -52,374 +94,48 @@ class N8nService {
     this.healthTrackerWebhookUrl = N8N_HEALTH_TRACKER_WEBHOOK_URL;
     this.adminWebhookUrl = N8N_ADMIN_WEBHOOK_URL;
 
-    // Only log initialization once
     if (!this.initialized) {
       this.initialized = true;
       logInfo('N8n service initialized with base URL:', this.baseUrl);
     }
   }
 
-  /**
-   * Call the webhook with params
-   */
-  async callWithParams(
-    sessionId: string,
-    userId: string | number,
-    userName: string,
-    period: number,
-    message: string,
-    application: string = 'analytics_chatbot',
-    is_ngo: boolean | null = null,
-    patient_id: string | number | null = null
-  ): Promise<N8nServiceResponse<string>> {
-    // Track API calls for debugging
-    apiCallCount++;
-    logDebug('API call initiated', {
-      sessionId: '[REDACTED]',
-      callCount: apiCallCount
-    });
-
-    try {
-      // Prepare headers
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      };
-
-      // Add API key if provided
-      if (this.apiKey) {
-        headers['X-N8N-API-KEY'] = this.apiKey;
-      }
-
-      // Construct URL - default to analytics webhook if available, otherwise fallback to old path
-      let url = '';
-      if (application === 'analytics_chatbot') {
-        url = this.analyticsWebhookUrl || '';
-      } else if (application === 'health_tracker_summary') {
-        url = this.healthTrackerWebhookUrl || '';
-      }
-
-      logDebug('Calling n8n service', { url });
-
-      // Create AbortController for timeout handling
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), this.defaultTimeout);
-      
-      // Store the controller with a unique key based on sessionId and message
-      const requestKey = `${sessionId}-${Date.now()}`;
-      this.currentRequests.set(requestKey, controller);
-      // Also store in the global variable for easier access
-      currentController = controller;
-
-      // Send request using fetch API
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify({
-          sessionId,
-          user_id: userId,
-          user_name: userName,
-          duration: period,
-          message,
-          ...(is_ngo !== null && { is_ngo }),
-          ...(patient_id !== null && { patient_id }),
-          application
-        }),
-        signal: controller.signal
-      });
-
-      // Clear the timeout and remove from active requests
-      clearTimeout(timeoutId);
-      this.currentRequests.delete(requestKey);
-      if (currentController === controller) {
-        currentController = null;
-      }
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        logError('API response not OK:', { status: response.status, error: errorText });
-        return {
-          success: false,
-          error: `API error: ${response.status} ${response.statusText}`
-        };
-      }
-
-      const data = await response.json();
-
-      // Handle various response formats
-      let responseData = data?.output?.answer || data?.output?.response || data?.response || data;
-
-      if (!responseData || (typeof responseData === 'string' && responseData.trim() === '')) {
-        return {
-          success: false,
-          error: 'Empty response from server'
-        };
-      }
-
-      return {
-        success: true,
-        data: responseData
-      };
-    } catch (error) {
-      logError('N8n webhook error:', error);
-
-      // Handle specific error types
-      if (error instanceof Error) {
-        // Handle abort/timeout errors
-        if (error.name === 'AbortError') {
-          // Check if this was a user-initiated abort
-          if (userInitiatedAbort) {
-            // This was intentionally cancelled by the user, do not treat as an error
-            return {
-              success: true,
-              data: 'Request cancelled by user'
-            };
-          } else {
-            // This was a timeout abort
-            return {
-              success: false,
-              error: 'Connection timed out'
-            };
-          }
-        }
-        // Handle network errors
-        else if (error.message.includes('network') || error.message.includes('Network Error')) {
-          return {
-            success: false,
-            error:
-              "We couldn't connect to the server. Please check your internet connection or try again in a few moments."
-          };
-        }
-
-        return {
-          success: false,
-          error: error.message
-        };
-      }
-
-      return {
-        success: false,
-        error: 'Unknown error occurred'
-      };
-    }
+  private getWebhookUrl(
+    applicationType: 'analytics_chatbot' | 'health_tracker_summary' | string
+  ): string | undefined {
+    const webhookUrls: { [key: string]: string | undefined } = {
+      analytics_chatbot: this.analyticsWebhookUrl,
+      health_tracker_summary: this.healthTrackerWebhookUrl,
+      // Add other application types here if needed
+    };
+    return webhookUrls[applicationType];
   }
 
-  /**
-   * Send a message to n8n and get a response
-   * @param sessionId - The session ID for the conversation
-   * @param message - The message to send
-   * @param userId - The user ID
-   * @param application - The application type (analytics_chatbot or health_tracker_summary)
-   * @param patient_id - Optional patient ID for health tracker operations
-   * @returns Promise with the response data
-   */
-  async sendMessage(
-    sessionId: string,
-    message: string,
-    userId: string | number = '1160',
-    application: string = 'analytics_chatbot',
-    patient_id?: string | number | null,
-    duration?: number | null // Added duration parameter
-  ): Promise<N8nServiceResponse<string>> {
-    // Track API calls for debugging
-    apiCallCount++;
-    logDebug('Message API call initiated', {
-      sessionId: '[REDACTED]',
-      callCount: apiCallCount
-    });
-
-    try {
-      // Prepare headers
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      };
-
-      // Add API key if provided
-      if (this.apiKey) {
-        headers['X-N8N-API-KEY'] = this.apiKey;
-      }
-
-      // Select appropriate webhook URL based on application
-      let url;
-      if (application === 'analytics_chatbot') {
-        url = this.analyticsWebhookUrl;
-      } else if (application === 'health_tracker_summary') {
-        url = this.healthTrackerWebhookUrl;
-      } else {
-        // Fallback to default
-        url = `${this.baseUrl}/n8n-send-message`;
-      }
-
-      if (!url) {
-        logError(`No webhook URL available for application: ${application}`);
-        return {
-          success: false,
-          error: `Webhook URL not configured for application: ${application}`
-        };
-      }
-
-      logDebug('Sending message to n8n', {
-        messageFirstChars: message.substring(0, 20) + '...'
-      });
-
-      // Create AbortController for timeout handling
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), this.defaultTimeout);
-
-      // Store the controller with a unique key based on sessionId and message
-      const requestKey = `${sessionId}-${Date.now()}`;
-      this.currentRequests.set(requestKey, controller);
-      // Also store in the global variable for easier access
-      currentController = controller;
-      
-      // Send request
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify({
-          sessionId: sessionId,
-          message: message,
-          user_id: userId,
-          application: application,
-          ...(application === 'health_tracker_summary' && patient_id !== null && { patient_id }),
-          ...(duration !== null && duration !== undefined && { duration }) // Added duration to body
-        }),
-        signal: controller.signal
-      });
-
-      // Clear the timeout and remove from active requests
-      clearTimeout(timeoutId);
-      this.currentRequests.delete(requestKey);
-      if (currentController === controller) {
-        currentController = null;
-      }
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        logError('API response not OK:', { status: response.status, error: errorText });
-        return {
-          success: false,
-          error: `API error: ${response.status} ${response.statusText}`
-        };
-      }
-
-      const data = await response.json();
-
-      // Handle various response formats
-      let responseData = data?.output?.answer || data?.output?.response || data?.response || data;
-
-      if (!responseData || (typeof responseData === 'string' && responseData.trim() === '')) {
-        return {
-          success: false,
-          error: 'Empty response from server'
-        };
-      }
-
-      return {
-        success: true,
-        data: responseData
-      };
-    } catch (error) {
-      logError('N8n webhook error:', error);
-
-      // Handle specific error types
-      if (error instanceof Error) {
-        // Handle abort/timeout errors
-        if (error.name === 'AbortError') {
-          // Check if this was a user-initiated abort
-          if (userInitiatedAbort) {
-            // This was intentionally cancelled by the user, do not treat as an error
-            return {
-              success: true,
-              data: 'Request cancelled by user'
-            };
-          } else {
-            // This was a timeout abort
-            return {
-              success: false,
-              error: 'Connection timed out'
-            };
-          }
-        }
-        // Handle network errors
-        else if (error.message.includes('network') || error.message.includes('Network Error')) {
-          return {
-            success: false,
-            error:
-              "We couldn't connect to the server. Please check your internet connection or try again in a few moments."
-          };
-        }
-
-        return {
-          success: false,
-          error: error.message
-        };
-      }
-
-      return {
-        success: false,
-        error: 'Unknown error occurred'
-      };
-    }
-  }
-
-  /**
-   * Call default webhook with generic payload
-   * @param payload - The data to send to the webhook
-   * @param path - The path or type of webhook to call
-   * @returns Promise with the response data
-   */
-  async callDefaultWebhook(
+  private async _executeFetch<TResponseJson>(
+    url: string,
     payload: unknown,
-    path: string = 'default'
-  ): Promise<N8nServiceResponse<string>> {
-    // Track API calls for debugging
+    requestKeyPrefix: string
+  ): Promise<TResponseJson> {
     apiCallCount++;
-    logDebug('N8N API call', {
-      callNumber: apiCallCount,
-      path,
-      payloadPreview: 'Redacted for security'
+    logDebug('N8N API call initiated via _executeFetch', {
+      callCount: apiCallCount,
+      url,
+      requestKeyPrefix
     });
 
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (this.apiKey) headers['X-N8N-API-KEY'] = this.apiKey;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      logDebug('Request timeout triggered', { url, timeout: this.defaultTimeout });
+      controller.abort('timeout'); // Pass reason for timeout
+    }, this.defaultTimeout);
+
+    const requestKey = `${requestKeyPrefix}-${Date.now()}`;
+    this.currentRequests.set(requestKey, controller);
+
     try {
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      };
-
-      if (this.apiKey) {
-        headers['X-N8N-API-KEY'] = this.apiKey;
-      }
-
-      // Use appropriate webhook URL based on path
-      let url;
-      if (path === 'analytics') {
-        url = this.analyticsWebhookUrl;
-      } else if (path === 'admin') {
-        url = this.adminWebhookUrl;
-      } else {
-        url = `${this.baseUrl}/${path}`;
-      }
-
-      if (!url) {
-        logError('No webhook URL available for path', { path });
-        return {
-          success: false,
-          error: `Webhook URL not configured for: ${path}`
-        };
-      }
-
-      logDebug('Calling default webhook', { url });
-
-      // Create AbortController for timeout handling
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), this.defaultTimeout);
-
-      // Store the controller with a unique key
-      const requestKey = `default-${Date.now()}`;
-      this.currentRequests.set(requestKey, controller);
-      // Also store in the global variable for easier access
-      currentController = controller;
-      
-      // Send request
       const response = await fetch(url, {
         method: 'POST',
         headers: headers,
@@ -427,142 +143,150 @@ class N8nService {
         signal: controller.signal
       });
 
-      // Clear the timeout and remove from active requests
-      clearTimeout(timeoutId);
-      this.currentRequests.delete(requestKey);
-      if (currentController === controller) {
-        currentController = null;
-      }
-
       if (!response.ok) {
-        const errorText = await response.text();
-        logError('API response not OK:', { status: response.status, error: errorText });
-        return {
-          success: false,
-          error: `API error: ${response.status} ${response.statusText}`
-        };
+        const errorText = await response.text().catch(() => 'Could not retrieve error text.');
+        logError('API response not OK:', { status: response.status, errorText, url });
+        throw new HttpError(response.status, response.statusText, errorText);
       }
-
-      const data = await response.json();
-
-      // Extract the response data
-      let responseData =
-        data?.output?.answer ||
-        data?.output?.response ||
-        data?.response ||
-        (typeof data === 'object' ? JSON.stringify(data) : data);
-
-      if (!responseData) {
-        return {
-          success: false,
-          error: 'Empty response from server'
-        };
-      }
-
-      return {
-        success: true,
-        data: responseData
-      };
+      const jsonData = await response.json();
+      logDebug('Raw n8n JSON response:', { data: jsonData, url });
+      return jsonData as TResponseJson;
     } catch (error) {
-      logError('N8N default webhook error:', error);
+      // Re-throw HttpError if it's already one (from the !response.ok block)
+      if (error instanceof HttpError) throw error;
 
       if (error instanceof Error) {
-        // Handle abort/timeout errors
         if (error.name === 'AbortError') {
-          // Check if this was a user-initiated abort
-          if (userInitiatedAbort) {
-            // This was intentionally cancelled by the user, do not treat as an error
-            return {
-              success: true,
-              data: 'Request cancelled by user'
-            };
+          const signalReason = (controller.signal as AbortSignal & { reason?: string }).reason;
+          if (this.userInitiatedAbort || signalReason === 'user_cancelled') {
+            logInfo('Request cancelled by user', { url });
+            throw new UserCancelledError();
           } else {
-            // This was a timeout abort
-            return {
-              success: false,
-              error: 'Connection timed out'
-            };
+            // Timeout or other programmatic abort
+            logError('Request timed out or aborted programmatically', { url });
+            throw new RequestTimeoutError();
           }
         }
-        // Handle network errors
-        else if (error.message.includes('network') || error.message.includes('Network Error')) {
-          return {
-            success: false,
-            error:
-              "We couldn't connect to the server. Please check your internet connection or try again in a few moments."
-          };
+        if (
+          error.message.toLowerCase().includes('failed to fetch') ||
+          error.message.toLowerCase().includes('networkerror')
+        ) {
+          throw new NetworkConnectionError(error.message);
         }
+      }
+      logError('Unhandled N8n request error in _executeFetch:', { error, url });
+      throw error; // Re-throw other unexpected errors
+    } finally {
+      clearTimeout(timeoutId);
+      this.currentRequests.delete(requestKey);
+      // Don't auto-reset the flag here - let the ChatContainer handle the timing
+    }
+  }
 
+  async callWithParams(
+    sessionId: string,
+    userId: string | number,
+    userName: string,
+    period: number,
+    message: string,
+    application: 'analytics_chatbot' | 'health_tracker_summary' = 'analytics_chatbot',
+    is_ngo: boolean | null = null,
+    patientId: string | number | null = null
+  ): Promise<N8nServiceResponse<N8nOutputData>> {
+    const url = this.getWebhookUrl(application);
+    if (!url) {
+      const errorMsg = `Webhook URL not configured for application: ${application}`;
+      logError(errorMsg, { application });
+      return { success: false, error: errorMsg };
+    }
+
+    const payload: CallWithParamsPayload = {
+      sessionId,
+      userId,
+      userName,
+      duration: period,
+      message,
+      application,
+      ...(is_ngo !== null && { is_ngo }),
+      ...(patientId !== null && { patientId })
+    };
+
+    // Define the expected raw JSON structure from this specific endpoint
+    type ExpectedRawJson = { output?: unknown; [key: string]: unknown };
+
+    try {
+      const rawData = await this._executeFetch<ExpectedRawJson>(
+        url,
+        payload,
+        `callWithParams-${sessionId}`
+      );
+
+      // Validate and transform the rawData
+      if (
+        typeof rawData === 'object' &&
+        rawData !== null &&
+        'output' in rawData &&
+        typeof rawData.output === 'string'
+      ) {
+        return { success: true, data: { output: rawData.output } };
+      } else {
+        logError('Malformed response from n8n for callWithParams', { receivedData: rawData, url });
         return {
           success: false,
-          error: error.message
+          error: 'Malformed response from server. Expected { "output": string }'
         };
       }
-
-      return {
-        success: false,
-        error: 'Unknown error occurred'
-      };
-    }
-  }
-
-  /**
-   * Stop current request if any is in progress
-   * @returns true if a request was stopped, false otherwise
-   */
-  stopCurrentRequest(): boolean {
-    // Set the flag to indicate this is a user-initiated abort
-    userInitiatedAbort = true;
-    
-    // Try to abort using the global controller
-    if (currentController) {
-      currentController.abort('user_cancelled');
-      currentController = null;
-      logDebug('Aborted current request using global controller');
-      return true;
-    }
-    
-    // If that fails, try to abort all requests in the map
-    if (this.currentRequests.size > 0) {
-      let aborted = false;
-      this.currentRequests.forEach((controller, key) => {
-        controller.abort('user_cancelled');
-        this.currentRequests.delete(key);
-        aborted = true;
-      });
-      
-      if (aborted) {
-        logDebug(`Aborted ${this.currentRequests.size} pending requests`);
-        return true;
+    } catch (error) {
+      if (error instanceof UserCancelledError) {
+        return { success: true, data: { output: 'Request cancelled by user' } };
+      } else if (error instanceof RequestTimeoutError) {
+        return { success: false, error: error.message };
+      } else if (error instanceof NetworkConnectionError) {
+        return { success: false, error: error.message };
+      } else if (error instanceof HttpError) {
+        return { success: false, error: error.message }; // error.message includes status and statusText
+      } else if (error instanceof Error) {
+        logError(`N8n callWithParams error (${application}):`, error);
+        return { success: false, error: error.message };
       }
+      logError(`Unknown error in callWithParams (${application}):`, error);
+      return { success: false, error: 'Unknown error occurred' };
     }
-    
-    return false;
-  }
-  
-  /**
-   * Check if the abort was initiated by the user
-   * @returns true if the abort was user-initiated
-   */
-  isUserInitiatedAbort(): boolean {
-    return userInitiatedAbort;
-  }
-  
-  /**
-   * Reset the user-initiated abort flag
-   */
-  resetUserInitiatedAbort(): void {
-    userInitiatedAbort = false;
   }
 
-  /**
-   * Cleanup function to handle any necessary resource cleanup.
-   * Call this when the component using n8nService is unmounted.
-   */
+  stopCurrentRequest(): boolean {
+    if (this.currentRequests.size === 0) {
+      logDebug('No active requests to stop.');
+      return false;
+    }
+    this.userInitiatedAbort = true; // Set instance flag
+    logDebug(`User initiated abort. Aborting ${this.currentRequests.size} pending requests.`);
+
+    let abortedCount = 0;
+    this.currentRequests.forEach((controller) => {
+      controller.abort('user_cancelled'); // Pass reason
+      // The controller will be removed from the map in _executeFetch's finally block.
+      abortedCount++;
+    });
+    // Note: userInitiatedAbort flag is reset in _executeFetch's finally block
+    return abortedCount > 0;
+  }
+
+  isUserInitiatedAbort(): boolean {
+    return this.userInitiatedAbort;
+  }
+
+  resetUserInitiatedAbort(): void {
+    // This is called by _executeFetch's finally block or can be called externally if needed.
+    logDebug('Resetting user initiated abort flag state.');
+    this.userInitiatedAbort = false;
+  }
+
   cleanup() {
-    logDebug('Cleaning up n8n service connection');
-    this.stopCurrentRequest();
-    this.currentRequests.clear();
+    logDebug('Cleaning up n8n service instance.');
+    this.stopCurrentRequest(); // This will abort requests.
+    this.currentRequests.clear(); // Explicitly clear map in case any linger.
+    this.resetUserInitiatedAbort(); // Ensure flag is reset.
   }
 }
 

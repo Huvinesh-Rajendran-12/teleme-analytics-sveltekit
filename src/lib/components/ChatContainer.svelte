@@ -75,7 +75,7 @@
     if (activityTracker) {
       activityTracker.cleanup();
     }
-    
+
     // Create and initialize a new activity tracker
     activityTracker = new ActivityTracker({
       timeoutMinutes: TIMEOUTS.analytics,
@@ -90,14 +90,14 @@
       pauseOnInvisible: false // DO NOT pause inactivity timer when tab loses focus
     });
 
-    // Start tracking activity 
+    // Start tracking activity
     activityTracker.startInactivityTimer();
-    
+
     // Attach chat container for specific tracking (scroll events) if available
     if (chatContainer) {
       activityTracker.attachElementListener(chatContainer);
     }
-    
+
     console.debug('Activity tracker initialized');
   }
 
@@ -112,7 +112,7 @@
   let lastConnectionState: boolean = true;
 
   // Function to handle connection status changes
-function handleConnectionChange(connected: boolean) {
+  function handleConnectionChange(connected: boolean) {
     console.debug(`Connection status changed to: ${connected}`);
 
     // Only process if there's an actual state change
@@ -209,7 +209,7 @@ function handleConnectionChange(connected: boolean) {
       });
       // Directly assigning the literal string 'initial' also works
       chatState.stage = 'initial';
-      
+
       // Also record activity for this case
       if (activityTracker) {
         activityTracker.recordActivity();
@@ -438,7 +438,7 @@ function handleConnectionChange(connected: boolean) {
       );
 
       // Special handling for user-cancelled requests
-      if (n8nService.isUserInitiatedAbort() || result.data === 'Request cancelled by user') {
+      if (n8nService.isUserInitiatedAbort()) {
         // No need to add a message here as it was already added in stopProcessing()
         console.debug('Request was cancelled by user, skipping error message');
         // Reset the flag after checking
@@ -454,20 +454,24 @@ function handleConnectionChange(connected: boolean) {
           `Sorry, there was an error: ${result.error || 'An unknown error occurred. Please try again later.'}`
         );
       }
-      // Handle successful responses
-      else if (result.data) {
-        // Check if result.data is a string, otherwise use an error message
-        const messageContent =
-          typeof result.data === 'string'
-            ? result.data
-            : 'Sorry, I received an unexpected response format. Please try again.';
-
-        // Only add the message if it's not from a cancellation
-        if (messageContent !== 'Request cancelled by user') {
-          addMessage('assistant', messageContent);
+      // Handle successful responses (result.success is true here)
+      if (typeof result.data === 'object' && result.data !== null && 'output' in result.data && typeof (result.data as { output: unknown }).output === 'string') {
+        // Expected successful response format { output: string }
+        const messageContent = (result.data as { output: string }).output;
+        // Only add the message if it's not from a cancellation and content is not empty
+        if (!n8nService.isUserInitiatedAbort() && messageContent.trim() !== '') {
+          addMessage('assistant', messageContent.trim());
+        } else if (messageContent.trim() === '') {
+           console.warn('Received empty message content from service');
+           addMessage('assistant', 'No data received from the service.');
         }
       } else {
-        addMessage('assistant', 'No data received from the service.');
+        // Handle unexpected successful response format or no data
+        console.error('Received unexpected data format from service', { data: result?.data });
+        addMessage(
+          'assistant',
+          'Sorry, I received an unexpected response format or no data. Please try again.'
+        );
       }
 
       chatState = {
@@ -637,7 +641,7 @@ function handleConnectionChange(connected: boolean) {
       );
 
       // Special handling for user-cancelled requests
-      if (n8nService.isUserInitiatedAbort() || result.data === 'Request cancelled by user') {
+      if (n8nService.isUserInitiatedAbort()) {
         // No need to add a message here as it was already added in stopProcessing()
         console.debug('Request was cancelled by user, skipping error message');
         // Reset the flag after checking
@@ -662,9 +666,7 @@ function handleConnectionChange(connected: boolean) {
             : 'Sorry, I encountered an error processing that request. Please try again.';
 
         // Only add the message if it's not from a cancellation
-        if (messageContent !== 'Request cancelled by user') {
-          addMessage('assistant', messageContent);
-        }
+        addMessage('assistant', messageContent);
       } else {
         addMessage('assistant', 'No data received from the service.');
       }

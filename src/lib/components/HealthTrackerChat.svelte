@@ -43,7 +43,7 @@
   let isConnected = true; // Connection status flag, will be verified on mount
   let loadingState: LoadingState = 'idle';
   let sessionId = uuidv7();
-  let selectedDuration: number | null = null; // Variable to store selected duration
+  let selectedDuration: number = 12; // Variable to store selected duration
 
   // Note: used in fetchDataFromN8n
   let isScrolledAway = false;
@@ -126,11 +126,12 @@
 
     // If connection restored and we were in error state
     if (connected && chatState.stage === 'error') {
-      chatState.stage = 'post_response';
+
       addMessage(
         'assistant',
         'Connection to the Health Tracker service has been restored. You can continue your session.'
       );
+      chatState.stage = 'post_response'; // Allow user to try again via options
     }
   };
 
@@ -242,7 +243,7 @@
     if (activityTracker) {
       activityTracker.cleanup();
     }
-    
+
     // Create and initialize a new activity tracker
     activityTracker = new ActivityTracker({
       timeoutMinutes: HEALTH_TRACKER_TIMEOUT,
@@ -257,20 +258,20 @@
       pauseOnInvisible: false // DO NOT pause inactivity timer when tab loses focus
     });
 
-    // Start tracking activity 
+    // Start tracking activity
     activityTracker.startInactivityTimer();
-    
+
     // Attach chat container for specific tracking (scroll events) if available
     if (chatContainerRef) {
       activityTracker.attachElementListener(chatContainerRef);
     }
-    
+
     logDebug('Activity tracker initialized');
   }
 
   const endConversation = (isError = false) => {
     logDebug('Ending conversation', { isError });
-    
+
     // Still record activity to reset timer
     if (activityTracker) {
       activityTracker.recordActivity();
@@ -409,10 +410,7 @@
       loadingState = 'analyzing';
 
       // Special handling for user-cancelled requests
-      if (
-        n8nService.isUserInitiatedAbort() ||
-        (result && result.data === 'Request cancelled by user')
-      ) {
+      if (n8nService.isUserInitiatedAbort()) {
         // No need to add a message here as it was already added in stopProcessing()
         logDebug('Request was cancelled by user, skipping error message');
         // Reset the flag after checking
@@ -431,14 +429,19 @@
           `The service returned an error: ${result?.error || 'Unknown service error'}. Please try again.`
         );
         chatState.stage = 'post_response'; // Allow user to try again via options
-      } else if (typeof result.data === 'string' && result.data.trim() !== '') {
-        // Expecting a pre-formatted string summary from n8nService
+      } else if ( // Check for object with output field
+        typeof result.data === 'object' &&
+        result.data !== null &&
+        typeof result.data.output === 'string' &&
+        result.data.output.trim() !== ''
+      ) {
+        // Expecting a JSON object with a non-empty 'output' string from n8nService
         loadingState = 'finalizing';
-        addMessage('assistant', result.data.trim());
+        addMessage('assistant', result.data.output.trim());
         chatState.stage = 'post_response'; // Move to post-response stage on success
       } else {
-        // Handle cases where data is not a non-empty string (null, undefined, empty string, wrong type)
-        logError('Received invalid or empty data from service (expected non-empty string)', {
+        // Handle cases where data is not the expected object structure or 'output' is invalid
+        logError('Received invalid or empty data from service (expected JSON with output key)', {
           sessionId,
           data: result?.data
         });
@@ -655,12 +658,11 @@
       const connectionErrorMsg =
         'Cannot connect to the Health Tracker service. Please check your network connection and try again later.';
 
-      if (
-        !lastMsg ||
-        typeof lastMsg.content !== 'string' ||
-        !lastMsg.content.includes('Cannot connect to the Health Tracker service')
-      ) {
+      // Use the utility function to check if a connection error message should be added
+      if (shouldAddConnectionErrorMessage(connectionErrorMsg, lastMsg?.content)) {
         addMessage('assistant', connectionErrorMsg);
+      } else {
+        logDebug('Skipping duplicate connection error message before sending question.');
       }
 
       chatState.loading = false;
@@ -683,29 +685,30 @@
     addMessage('user', question);
 
     try {
-      const result = await n8nService.sendMessage(
+      // Correcting the call arguments
+      const result = await n8nService.callWithParams(
         sessionId,
-        question,
         userId,
-        'health_tracker_summary',
-        patientId,
-        selectedDuration // Added duration
+        userName,
+        selectedDuration, // Pass selectedDuration for the 'period' argument
+        question, // Pass question for the 'message' argument
+        'health_tracker_summary', // Assuming this workflow type also handles general questions
+        null, // Assuming history should be null for a new question on existing summary
+        patientId
       );
 
       loadingState = 'analyzing';
 
       // Special handling for user-cancelled requests
-      if (
-        n8nService.isUserInitiatedAbort() ||
-        (result && result.data === 'Request cancelled by user')
-      ) {
+      // Relying only on the service's internal flag
+      if (n8nService.isUserInitiatedAbort()) {
         // No need to add a message here as it was already added in stopProcessing()
         logDebug('Request was cancelled by user, skipping error message');
         // Reset the flag after checking
         n8nService.resetUserInitiatedAbort();
         chatState.stage = 'post_response'; // Move to post-response stage
       }
-      // Normal error handling
+      // Normal error handling based on result success status
       else if (!result?.success) {
         logError('Service reported an error for question:', {
           error: result?.error,
@@ -716,45 +719,45 @@
           'assistant',
           `The service returned an error while processing your question: ${result?.error || 'Unknown service error'}. Please try asking something else.`
         );
-      } else if (result.data) {
-        let messageContent: string | object | null = null;
-        if (typeof result.data === 'string' && result.data.trim() !== '') {
-          messageContent = result.data.trim();
-        } else if (
-          typeof result.data === 'object' &&
-          result.data !== null &&
-          Object.keys(result.data).length > 0
-        ) {
-          messageContent = result.data;
-        }
-
-        loadingState = 'finalizing';
+        chatState.stage = 'post_response'; // Allow user to try again
+      }
+      // Handle successful response data
+      else {
+        // Expecting result.data to be either a string or an object with an 'output' string property
+        let assistantContent: string | undefined;
 
         if (
-          messageContent === null ||
-          (typeof messageContent === 'string' && messageContent === '')
+          typeof result.data === 'object' &&
+          result.data !== null &&
+          typeof result.data.output === 'string' &&
+          result.data.output.trim() !== ''
         ) {
-          logError('Empty or null response data from service for question', {
-            data: result.data,
-            sessionId
-          });
+          assistantContent = result.data.output.trim();
+        }
+
+        if (assistantContent) {
+          loadingState = 'finalizing';
+          // addMessage handles processing markdown if it's a string
+          addMessage('assistant', assistantContent);
+          chatState.stage = 'post_response'; // Move to post-response stage on success
+        } else {
+          // Handle cases where data is empty string, null, empty object, or object without output
+          logError(
+            'Received invalid or empty data from service for question despite success=true',
+            {
+              data: result?.data,
+              sessionId
+            }
+          );
           addMessage(
             'assistant',
             "Sorry, I couldn't process that question. Please try asking something else or try again later."
           );
-        } else {
-          addMessage('assistant', messageContent);
+          chatState.stage = 'post_response'; // Allow retry via post-response options
         }
-      } else {
-        logError('No data received from service for question despite success=true', {
-          sessionId,
-          data: result?.data
-        });
-        addMessage('assistant', 'No data received from the service.');
       }
 
       chatState.loading = false;
-      chatState.stage = 'post_response';
       loadingState = 'idle';
       isProcessing = false;
     } catch (error: unknown) {
@@ -773,10 +776,11 @@
           'assistant',
           'An error occurred while processing your question. Please try again.'
         );
+        // Move to error stage only on unexpected error, not abort
+        chatState.stage = 'error';
       }
 
       chatState.loading = false;
-      chatState.stage = 'error'; // Move to error stage on unexpected question error
       loadingState = 'idle';
       isProcessing = false;
 

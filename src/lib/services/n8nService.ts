@@ -7,6 +7,11 @@ type N8nServiceResponse<T = unknown> = {
   error?: string;
 };
 
+// Type for the data structure expected from n8n webhooks
+type N8nOutputData = {
+  output: string;
+};
+
 // Configuration options for N8n service
 type N8nConfig = {
   baseUrl: string;
@@ -71,7 +76,7 @@ class N8nService {
     application: string = 'analytics_chatbot',
     is_ngo: boolean | null = null,
     patient_id: string | number | null = null
-  ): Promise<N8nServiceResponse<string>> {
+  ): Promise<N8nServiceResponse<N8nOutputData>> {
     // Track API calls for debugging
     apiCallCount++;
     logDebug('API call initiated', {
@@ -145,20 +150,28 @@ class N8nService {
 
       const data = await response.json();
 
-      // Handle various response formats
-      let responseData = data?.output || data?.output?.answer || data?.output?.response || data?.response || data;
+      logDebug('Raw n8n response:', data); // Log the raw response using the provided logger
 
-      if (!responseData || (typeof responseData === 'string' && responseData.trim() === '')) {
+      // Validate if the data matches the expected N8nOutputData type { output: string }
+      // The prompt requires the raw data returned to be strictly { "output": string }.
+      // If the response does not match this structure, it's a malformed response.
+      // Validate if the data matches the expected N8nOutputData type { output: string }
+      // Check if data is an object, not null, has an 'output' property, and data.output is a string
+      if (typeof data === 'object' && data !== null && 'output' in data && typeof (data as { output: unknown }).output === 'string') {
+        // If it matches the expected format, return it directly as N8nOutputData
+        // We can now safely assume data.output is a string after the check
+        return {
+          success: true,
+          data: { output: (data as { output: string }).output } as N8nOutputData // Explicitly cast for clarity
+        };
+      } else {
+        // If the data does not match the expected { "output": string } format, treat as an error
+        logError('Malformed response from n8n', { receivedData: data });
         return {
           success: false,
-          error: 'Empty response from server'
+          error: 'Malformed response from server. Expected { "output": string }'
         };
       }
-
-      return {
-        success: true,
-        data: responseData
-      };
     } catch (error) {
       logError('N8n webhook error:', error);
 
@@ -166,15 +179,19 @@ class N8nService {
       if (error instanceof Error) {
         // Handle abort/timeout errors
         if (error.name === 'AbortError') {
-          // Check if this was a user-initiated abort
+          // Check if this was a user-initiated abort.
+          // Relying on the global userInitiatedAbort flag set by stopCurrentRequest,
+          // or checking the error's cause/message if available (AbortController adds reason).
+          // The existing code uses userInitiatedAbort, preserving that logic.
           if (userInitiatedAbort) {
-            // This was intentionally cancelled by the user, do not treat as an error
+            // This was intentionally cancelled by the user, do not treat as an error.
+            // Return a success response with a specific message, adhering to the N8nOutputData type.
             return {
               success: true,
-              data: 'Request cancelled by user'
+              data: { output: 'Request cancelled by user' } as N8nOutputData // Ensure data structure matches N8nOutputData
             };
           } else {
-            // This was a timeout abort
+            // This was a timeout abort (not user-initiated)
             return {
               success: false,
               error: 'Connection timed out'

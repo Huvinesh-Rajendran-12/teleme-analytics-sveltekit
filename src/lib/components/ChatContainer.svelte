@@ -661,8 +661,8 @@
       else if (result.data) {
         // Check if result.data is a string, otherwise use an error message
         const messageContent =
-          typeof result.data === 'string'
-            ? result.data
+          result.data && typeof result.data.output === 'string'
+            ? result.data.output
             : 'Sorry, I encountered an error processing that request. Please try again.';
 
         // Only add the message if it's not from a cancellation

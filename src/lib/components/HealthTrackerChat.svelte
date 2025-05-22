@@ -5,7 +5,6 @@
   import { n8nService } from '$lib/services';
   import { ActivityTracker, shouldAddConnectionErrorMessage } from '$lib/utils/activityUtils';
   import { parseAIMessageContent } from '$lib/utils/markdownParser';
-  import { checkConnectionStatus } from '$lib/utils/connectionUtils';
 
   // Common components
   import ConnectionStatusBanner from './common/ConnectionStatusBanner.svelte';
@@ -573,26 +572,15 @@
     logDebug(`Post-response option selected: ${id}`);
     recordActivity();
 
-    // For options that will need a connection, check it first
-    if ((id === 'ask' || id === 'reselect') && !isConnected) {
-      const n8nEndpoint = import.meta.env.VITE_N8N_HEALTH_TRACKER_WEBHOOK_URL || '';
-      const connectionStatus = await checkConnectionStatus(n8nEndpoint, CONNECTION_CHECK_TIMEOUT);
+    // For options that will need a connection, check it first using the activity tracker
+    if (activityTracker && (id === 'ask' || id === 'reselect')) {
+      const connectionStatus = await activityTracker.checkConnection();
 
-      // Make sure to update the connection status based on the actual check
-      if (isConnected !== connectionStatus) {
-        isConnected = connectionStatus;
+      // Update state based on the check result
+      isConnected = connectionStatus;
 
-        // Only add a connection restored message if the connection is actually restored
-        if (connectionStatus) {
-          // The connection was restored
-          addMessage(
-            'assistant',
-            'Connection to the Health Tracker service has been restored. You can continue your session.'
-          );
-        }
-      }
-
-      // If still not connected, show error and return
+      // If not connected, show error and return.
+      // The 'connection restored' message is handled by activityTracker's callback (handleConnectionChange).
       if (!isConnected) {
         addMessage(
           'assistant',

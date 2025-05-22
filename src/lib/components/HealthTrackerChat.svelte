@@ -431,43 +431,21 @@
           `The service returned an error: ${result?.error || 'Unknown service error'}. Please try again.`
         );
         chatState.stage = 'post_response'; // Allow user to try again via options
-      } else if (result.data) {
-        let messageContent: string | object | null = null;
-        if (typeof result.data === 'string' && result.data.trim() !== '') {
-          messageContent = result.data.trim();
-        } else if (
-          typeof result.data === 'object' &&
-          result.data !== null &&
-          Object.keys(result.data).length > 0
-        ) {
-          messageContent = result.data;
-        }
-
+      } else if (typeof result.data === 'string' && result.data.trim() !== '') {
+        // Expecting a pre-formatted string summary from n8nService
         loadingState = 'finalizing';
-
-        if (
-          messageContent === null ||
-          (typeof messageContent === 'string' && messageContent === '')
-        ) {
-          logError('Empty or null response data from service', {
-            data: result.data,
-            sessionId
-          });
-          addMessage(
-            'assistant',
-            "Sorry, I couldn't generate a summary for the selected period. Please try another duration or try again later."
-          );
-          chatState.stage = 'post_response'; // Allow retry via post-response options or new selection
-        } else {
-          addMessage('assistant', messageContent);
-          chatState.stage = 'post_response'; // Move to post-response stage on success
-        }
+        addMessage('assistant', result.data.trim());
+        chatState.stage = 'post_response'; // Move to post-response stage on success
       } else {
-        logError('No data received from service despite success=true', {
+        // Handle cases where data is not a non-empty string (null, undefined, empty string, wrong type)
+        logError('Received invalid or empty data from service (expected non-empty string)', {
           sessionId,
           data: result?.data
         });
-        addMessage('assistant', 'No data received from the service.');
+        addMessage(
+          'assistant',
+          "Sorry, I couldn't generate a summary for the selected period or received invalid data. Please try another duration or try again later."
+        );
         chatState.stage = 'post_response'; // Allow retry via post-response options or new selection
       }
 

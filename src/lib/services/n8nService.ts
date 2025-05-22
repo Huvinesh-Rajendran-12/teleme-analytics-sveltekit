@@ -146,7 +146,7 @@ class N8nService {
       const data = await response.json();
 
       // Handle various response formats
-      let responseData = data?.output?.answer || data?.output?.response || data?.response || data;
+      let responseData = data?.output || data?.output?.answer || data?.output?.response || data?.response || data;
 
       if (!responseData || (typeof responseData === 'string' && responseData.trim() === '')) {
         return {

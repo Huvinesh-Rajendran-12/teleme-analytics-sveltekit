@@ -1,16 +1,16 @@
-class UserCancelledError extends Error {
+export class UserCancelledError extends Error {
   constructor() {
     super('Request cancelled by user');
     this.name = 'UserCancelledError';
   }
 }
-class RequestTimeoutError extends Error {
+export class RequestTimeoutError extends Error {
   constructor() {
     super('Connection timed out');
     this.name = 'RequestTimeoutError';
   }
 }
-class NetworkConnectionError extends Error {
+export class NetworkConnectionError extends Error {
   constructor(originalMessage?: string) {
     super(
       originalMessage ||
@@ -19,7 +19,7 @@ class NetworkConnectionError extends Error {
     this.name = 'NetworkConnectionError';
   }
 }
-class HttpError extends Error {
+export class HttpError extends Error {
   public status: number;
   public errorText?: string;
   constructor(status: number, statusText: string, errorText?: string) {

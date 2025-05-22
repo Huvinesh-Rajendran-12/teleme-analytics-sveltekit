@@ -4,7 +4,13 @@
   import ChatInput from './ChatInput.svelte';
   import { menuConfig } from '$lib/config';
   import type { OptionsButtonType } from '$lib/types';
-  import { n8nService } from '$lib/services/n8nService';
+  import {
+    n8nService,
+    UserCancelledError,
+    RequestTimeoutError,
+    NetworkConnectionError,
+    HttpError
+  } from '$lib/services/n8nService';
   import { ActivityTracker, shouldAddConnectionErrorMessage } from '$lib/utils/activityUtils';
   import { connectionStatus } from '$lib/stores/connectionStore';
   import StopProcessingButton from './common/StopProcessingButton.svelte';
@@ -490,31 +496,49 @@
       }
       isProcessing = false;
     } catch (error) {
-      console.error('Error handling analytics query', error);
+      // Reset loading and processing state in case of error
+      chatState.loading = false;
+      isProcessing = false;
 
-      // Don't show errors for user-initiated aborts
-      const isAborted = n8nService.isUserInitiatedAbort();
-      console.debug('handleAnalyticsQuery error check:', { 
-        isAborted,
-        errorName: error instanceof Error ? error.name : 'unknown',
-        errorMessage: error instanceof Error ? error.message : 'unknown'
-      });
-      
-      if (!isAborted) {
+      // Handle specific error types from n8nService
+      if (error instanceof UserCancelledError) {
+        console.debug('Analytics query was cancelled by user');
+        // No user-facing error message needed for cancellation
+      } else if (error instanceof RequestTimeoutError) {
+        console.error('Analytics query timed out', error);
         addMessage(
           'assistant',
-          'Sorry, there was an error processing your request. Please try again.'
+          'The request timed out. Please try again.'
         );
-        chatState.loading = false;
+      } else if (error instanceof NetworkConnectionError) {
+        console.error('Analytics query network error', error);
+        addMessage(
+          'assistant',
+          'Network connection error. Please check your internet connection and try again.'
+        );
+      } else if (error instanceof HttpError) {
+        console.error('Analytics query HTTP error', { status: error.status, message: error.message });
+        addMessage(
+          'assistant',
+          `An API error occurred (${error.status}). Please try again later.`
+        );
+      } else if (error instanceof Error) {
+        console.error('Unhandled analytics query error', error);
+        addMessage(
+          'assistant',
+          `Sorry, an unexpected error occurred: ${error.message}. Please try again.`
+        );
       } else {
-        console.debug('Skipping error message - request was aborted by user');
+        console.error('Unknown error handling analytics query', error);
+        addMessage(
+          'assistant',
+          'Sorry, an unknown error occurred. Please try again.'
+        );
       }
-      
-      isProcessing = false;
     }
 
-    // Note: Don't reset the user-initiated abort flag here
-    // Let the timeout in stopProcessing() handle it
+    // Note: The user-initiated abort flag is reset within the n8nService's _executeFetch method
+    // when the fetch promise resolves or rejects after an abort signal.
   }
 
   function handlePostResponseOption(buttonId: string) {

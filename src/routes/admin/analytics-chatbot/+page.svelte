@@ -41,6 +41,28 @@
   let selectedDateRange = 'all';
   let selectedStatus = 'all';
 
+  // Search functionality
+  let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+  
+  function handleSearchInput() {
+    // Clear existing timeout
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+    
+    // Set new timeout to debounce search
+    searchTimeout = setTimeout(() => {
+      currentPage = 1; // Reset to first page when searching
+      loadConversations();
+    }, 500);
+  }
+
+  function clearSearch() {
+    searchQuery = '';
+    currentPage = 1;
+    loadConversations();
+  }
+
   // Derived state
   $: hasConversations = conversations && conversations.length > 0;
   // $: filteredConversations = conversations; // In a real app, apply filters here
@@ -95,7 +117,7 @@
       // The timeout promise only rejects, so if it wins, Promise.race rejects.
       // If fetchAnalyticsChatbotConversations resolves first, Promise.race resolves with its value.
       const result = await Promise.race([
-        fetchAnalyticsChatbotConversations(currentPage, 10) as Promise<PossibleFetchResult>, // Explicitly cast the service promise return type to remove 'any'
+        fetchAnalyticsChatbotConversations(currentPage, 10, searchQuery) as Promise<PossibleFetchResult>, // Explicitly cast the service promise return type to remove 'any'
         new Promise<never>(
           (
             _,
@@ -608,9 +630,22 @@
                 name="search"
                 id="search"
                 bind:value={searchQuery}
-                class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 pr-3 py-2 sm:text-sm border-gray-300 rounded-md"
+                on:input={handleSearchInput}
+                class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 pr-10 py-2 sm:text-sm border-gray-300 rounded-md"
                 placeholder="Search by user or content"
               />
+              {#if searchQuery}
+                <button
+                  type="button"
+                  on:click={clearSearch}
+                  aria-label="Clear search"
+                  class="absolute inset-y-0 right-0 pr-3 flex items-center"
+                >
+                  <svg class="h-4 w-4 text-gray-400 hover:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              {/if}
             </div>
           </div>
 

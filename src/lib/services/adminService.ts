@@ -130,11 +130,12 @@ export async function authenticateAdmin(
 export async function fetchAnalyticsChatbotConversations(
   page: number = 1,
   pageSize: number = 10,
+  searchTerm: string = '',
 ): Promise<ConversationsList[]> {
   try {
     logDebug("======== FETCH ANALYTICS CHATBOT CONVERSATIONS ========");
     logDebug(`fetchAnalyticsChatbotConversations called at ${new Date().toISOString()}`);
-    logDebug("Parameters:", { page, pageSize });
+    logDebug("Parameters:", { page, pageSize, searchTerm });
 
     const token = getStoredAdminToken();
     logDebug("Token available for API call:", Boolean(token));
@@ -156,6 +157,11 @@ export async function fetchAnalyticsChatbotConversations(
       page: page.toString(),
       pageSize: pageSize.toString(),
     });
+
+    // Add search term if provided
+    if (searchTerm && searchTerm.trim()) {
+      params.append("search_term", searchTerm.trim());
+    }
 
     // Build the URL with parameters using both the configured and direct URLs
     const configuredUrl = `${N8N_ADMIN_WEBHOOK_URL}?${params.toString()}`;
@@ -256,11 +262,12 @@ export async function fetchAnalyticsChatbotConversations(
 export async function fetchHealthTrackerConversations(
   page: number = 1,
   pageSize: number = 10,
+  searchTerm: string = '',
 ): Promise<ConversationsList[]> {
   try {
     logDebug("======== FETCH HEALTH TRACKER CONVERSATIONS ========");
     logDebug(`fetchHealthTrackerConversations called at ${new Date().toISOString()}`);
-    logDebug("Parameters:", { page, pageSize });
+    logDebug("Parameters:", { page, pageSize, searchTerm });
 
     const token = getStoredAdminToken();
     logDebug("Token available for API call:", Boolean(token));
@@ -281,6 +288,11 @@ export async function fetchHealthTrackerConversations(
       page: page.toString(),
       pageSize: pageSize.toString(),
     });
+
+    // Add search term if provided
+    if (searchTerm && searchTerm.trim()) {
+      params.append("search_term", searchTerm.trim());
+    }
 
     // Build the URL with parameters
     const url = `${directUrl}?${params.toString()}`;

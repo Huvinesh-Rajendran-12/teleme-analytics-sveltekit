@@ -2,8 +2,9 @@ import axios from "axios";
 import type {
   ConversationsList,
   ConversationDetail,
-  UserActivityStats
-} from "$lib/types/conversations"; 
+  UserActivityStats,
+  WebhookDashboardResponse
+} from "$lib/types/conversations";
 import { getStoredAdminToken } from "$lib/utils/auth";
 import { logDebug, logError, logInfo } from "$lib/utils/secureLogger";
 import { browser } from "$app/environment";
@@ -614,6 +615,37 @@ export async function fetchHealthTrackerStats(): Promise<UserActivityStats | nul
     }
   } catch (error) {
     logError("Error fetching health tracker stats:", error);
+    throw error;
+  }
+}
+
+/**
+ * Fetch dashboard summary data from webhook
+ */
+export async function fetchDashboardData(): Promise<WebhookDashboardResponse> {
+  try {
+    logInfo("Fetching dashboard data from webhook...");
+    
+    const WEBHOOK_URL = "https://teleme-n8n.teleme.co/webhook/dashboard-summary";
+    
+    const response = await axios.get(WEBHOOK_URL, {
+      timeout: 10000,
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+
+    logDebug("Dashboard webhook response:", response.data);
+    
+    // The webhook returns an array with one object
+    if (Array.isArray(response.data) && response.data.length > 0) {
+      return response.data[0];
+    }
+    
+    throw new Error("Invalid response format from dashboard webhook");
+    
+  } catch (error) {
+    logError("Error fetching dashboard data:", error);
     throw error;
   }
 }

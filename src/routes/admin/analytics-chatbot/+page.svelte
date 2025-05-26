@@ -43,13 +43,13 @@
 
   // Search functionality
   let searchTimeout: ReturnType<typeof setTimeout> | null = null;
-  
+
   function handleSearchInput() {
     // Clear existing timeout
     if (searchTimeout) {
       clearTimeout(searchTimeout);
     }
-    
+
     // Set new timeout to debounce search
     searchTimeout = setTimeout(() => {
       currentPage = 1; // Reset to first page when searching
@@ -117,7 +117,11 @@
       // The timeout promise only rejects, so if it wins, Promise.race rejects.
       // If fetchAnalyticsChatbotConversations resolves first, Promise.race resolves with its value.
       const result = await Promise.race([
-        fetchAnalyticsChatbotConversations(currentPage, 10, searchQuery) as Promise<PossibleFetchResult>, // Explicitly cast the service promise return type to remove 'any'
+        fetchAnalyticsChatbotConversations(
+          currentPage,
+          10,
+          searchQuery
+        ) as Promise<PossibleFetchResult>, // Explicitly cast the service promise return type to remove 'any'
         new Promise<never>(
           (
             _,
@@ -641,8 +645,18 @@
                   aria-label="Clear search"
                   class="absolute inset-y-0 right-0 pr-3 flex items-center"
                 >
-                  <svg class="h-4 w-4 text-gray-400 hover:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  <svg
+                    class="h-4 w-4 text-gray-400 hover:text-gray-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               {/if}

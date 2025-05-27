@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { fade, fly } from 'svelte/transition';
+
   import AdminLayout from '$lib/components/admin/AdminLayout.svelte';
   import { fetchDashboardData } from '$lib/services/adminService';
   import type { WebhookDashboardResponse } from '$lib/types/conversations';
@@ -42,12 +42,12 @@
 </script>
 
 <AdminLayout>
-  <div class="max-w-7xl mx-auto" in:fade={{ duration: 300, delay: 150 }}>
+  <div class="max-w-7xl mx-auto">
     <!-- Header -->
     <div class="mb-8">
       <div class="flex flex-col md:flex-row md:items-end justify-between">
         <div class="mb-4 md:mb-0">
-          <h2 class="text-3xl font-bold text-gray-900" in:fly={{ y: -20, duration: 400 }}>
+          <h2 class="text-3xl font-bold text-gray-900">
             Welcome to Teleme Admin
           </h2>
           <p class="text-gray-600 mt-2 text-lg">
@@ -68,12 +68,12 @@
 
     <!-- Loading State -->
     {#if loading}
-      <div class="text-center py-12" in:fade={{ duration: 300 }}>
+      <div class="text-center py-12">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
         <p class="mt-4 text-gray-600">Loading dashboard data...</p>
       </div>
     {:else if error}
-      <div class="bg-red-50 border border-red-200 rounded-lg p-6 mb-8" in:fade={{ duration: 300 }}>
+      <div class="bg-red-50 border border-red-200 rounded-lg p-6 mb-8">
         <div class="flex items-center">
           <div class="flex-shrink-0">
             <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
@@ -102,7 +102,6 @@
         <!-- Total Active Users -->
         <div
           class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border border-blue-200 shadow-sm hover:shadow-md transition-shadow duration-200"
-          in:fly={{ y: 20, duration: 400, delay: 200 }}
         >
           <div class="flex justify-between items-start">
             <div>
@@ -147,7 +146,6 @@
         <!-- Conversations Today -->
         <div
           class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 border border-purple-200 shadow-sm hover:shadow-md transition-shadow duration-200"
-          in:fly={{ y: 20, duration: 400, delay: 300 }}
         >
           <div class="flex justify-between items-start">
             <div>
@@ -194,7 +192,6 @@
         <!-- Average Response Time -->
         <div
           class="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-6 border border-amber-200 shadow-sm hover:shadow-md transition-shadow duration-200"
-          in:fly={{ y: 20, duration: 400, delay: 400 }}
         >
           <div class="flex justify-between items-start">
             <div>
@@ -244,7 +241,6 @@
         <!-- Analytics Chatbot Card -->
         <div
           class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow duration-200"
-          in:fly={{ x: -20, duration: 400, delay: 400 }}
         >
           <div class="h-2 bg-gradient-to-r from-blue-400 to-blue-600"></div>
           <div class="p-6">
@@ -320,7 +316,6 @@
         <!-- Health Tracker Card -->
         <div
           class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow duration-200"
-          in:fly={{ x: 20, duration: 400, delay: 500 }}
         >
           <div class="h-2 bg-gradient-to-r from-green-400 to-green-600"></div>
           <div class="p-6">
@@ -397,7 +392,6 @@
       <!-- Statistics Card -->
       <div
         class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow duration-200"
-        in:fly={{ y: 20, duration: 400, delay: 600 }}
       >
         <div class="h-2 bg-gradient-to-r from-purple-400 to-purple-600"></div>
         <div class="p-6">
@@ -476,7 +470,7 @@
       </div>
 
       <!-- Recent Activity Section -->
-      <div class="mt-8" in:fly={{ y: 20, duration: 400, delay: 700 }}>
+      <div class="mt-8">
         <h3 class="text-lg font-semibold text-gray-800 mb-4">Recent Activity</h3>
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <div class="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">

@@ -155,6 +155,16 @@
   });
 </script>
 
+<style>
+  :global(html, body) {
+    overscroll-behavior: none;
+  }
+  
+  :global(*) {
+    overscroll-behavior: none;
+  }
+</style>
+
 {#if isLoading}
   <div class="flex h-screen items-center justify-center bg-gray-50">
     <div class="flex flex-col items-center">
@@ -169,7 +179,7 @@
     <slot />
   </div>
 {:else}
-  <div class="min-h-screen bg-gray-50">
+  <div class="min-h-screen bg-gray-50" style="overscroll-behavior: none;">
     <!-- Mobile menu button -->
     <div class="fixed top-0 left-0 z-40 lg:hidden">
       <button
@@ -203,7 +213,7 @@
         <div class="flex h-16 flex-shrink-0 items-center px-4 border-b border-gray-200">
           <a href="/admin/home" class="text-xl font-bold text-blue-600"> Admin Dashboard </a>
         </div>
-        <div class="flex flex-1 flex-col overflow-y-auto">
+        <div class="flex flex-1 flex-col overflow-y-auto" style="overscroll-behavior: none;">
           <nav class="flex-1 space-y-1 px-2 py-4">
             {#each navItems as item}
               <a
@@ -292,7 +302,7 @@
             </svg>
           </button>
         </div>
-        <div class="flex flex-1 flex-col overflow-y-auto">
+        <div class="flex flex-1 flex-col overflow-y-auto" style="overscroll-behavior: none;">
           <nav class="flex-1 space-y-1 px-2 py-4">
             {#each navItems as item}
               <a
@@ -340,7 +350,7 @@
     {/if}
 
     <!-- Main content area -->
-    <div class="lg:pl-64 flex flex-col flex-1">
+    <div class="lg:pl-64 flex flex-col flex-1 overflow-y-auto" style="overscroll-behavior: none;">
       <!-- Top navigation for mobile -->
       <div class="sticky top-0 z-10 flex h-16 flex-shrink-0 bg-white shadow lg:hidden">
         <div class="flex flex-1 justify-between px-4">
@@ -359,7 +369,7 @@
       </div>
 
       <!-- Main content -->
-      <main class="flex-1 px-4 py-8 sm:px-6 lg:px-8" in:fade={{ duration: 300, delay: 150 }}>
+      <main class="flex-1 px-4 py-8 sm:px-6 lg:px-8" class:pl-64={sidebarOpen && !isLoginPage} style="overscroll-behavior: none;">
         <slot />
       </main>
     </div>

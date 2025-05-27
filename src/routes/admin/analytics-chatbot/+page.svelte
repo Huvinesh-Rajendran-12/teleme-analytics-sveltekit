@@ -374,7 +374,7 @@
 </script>
 
 <AdminLayout>
-  <div class="max-w-7xl mx-auto px-4 py-6" in:fade={{ duration: 300, delay: 100 }}>
+  <div class="max-w-7xl mx-auto px-4 py-6">
     <!-- Header with metrics -->
     <div class="mb-8">
       <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
@@ -600,7 +600,7 @@
 
     <!-- Loading state -->
     {#if loading && showLoadingSkeleton}
-      <div in:fade={{ duration: 150 }}>
+      <div>
         <!-- Loading skeleton -->
         <div class="space-y-4">
           {#each Array(5) as _, i}

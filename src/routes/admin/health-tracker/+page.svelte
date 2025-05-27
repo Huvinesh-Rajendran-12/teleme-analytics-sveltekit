@@ -299,7 +299,7 @@
 </script>
 
 <AdminLayout>
-  <div class="max-w-7xl mx-auto px-4 py-6" in:fade={{ duration: 300, delay: 100 }}>
+  <div class="max-w-7xl mx-auto px-4 py-6">
     <!-- Header section -->
     <div class="mb-8">
       <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">

@@ -767,11 +767,9 @@
             <!-- Avg Sessions/User -->
             <StatCard
               title="Avg Sessions/User"
-              value={
-                analyticsStats.avgSessionsPerUser
-                  ? analyticsStats.avgSessionsPerUser.toFixed(2)
-                  : 'N/A'
-              }
+              value={analyticsStats.avgSessionsPerUser
+                ? analyticsStats.avgSessionsPerUser.toFixed(2)
+                : 'N/A'}
               iconName="barChart"
               iconColor="#2563eb"
               bgColorClass="bg-blue-100"
@@ -780,11 +778,9 @@
             <!-- Weekly Retention -->
             <StatCard
               title="Weekly Retention"
-              value={
-                analyticsStats.weeklyRetentionRate
-                  ? `${analyticsStats.weeklyRetentionRate.toFixed(2)}%`
-                  : 'N/A'
-              }
+              value={analyticsStats.weeklyRetentionRate
+                ? `${analyticsStats.weeklyRetentionRate.toFixed(2)}%`
+                : 'N/A'}
               iconName="retention"
               iconColor="#2563eb"
               bgColorClass="bg-blue-100"
@@ -971,11 +967,9 @@
             <!-- Avg Sessions/User -->
             <StatCard
               title="Avg Sessions/User"
-              value={
-                healthTrackerStats.avgSessionsPerUser
-                  ? healthTrackerStats.avgSessionsPerUser.toFixed(2)
-                  : 'N/A'
-              }
+              value={healthTrackerStats.avgSessionsPerUser
+                ? healthTrackerStats.avgSessionsPerUser.toFixed(2)
+                : 'N/A'}
               iconName="barChart"
               iconColor="#16a34a"
               bgColorClass="bg-green-100"
@@ -985,11 +979,9 @@
             <!-- Weekly Retention -->
             <StatCard
               title="Weekly Retention"
-              value={
-                healthTrackerStats.weeklyRetentionRate
-                  ? `${healthTrackerStats.weeklyRetentionRate.toFixed(2)}%`
-                  : 'N/A'
-              }
+              value={healthTrackerStats.weeklyRetentionRate
+                ? `${healthTrackerStats.weeklyRetentionRate.toFixed(2)}%`
+                : 'N/A'}
               iconName="retention"
               iconColor="#16a34a"
               bgColorClass="bg-green-100"
@@ -1029,4 +1021,5 @@
         {/if}
       </div>
     {/if}
-  {/if}\n</div>
+  {/if}
+</div>

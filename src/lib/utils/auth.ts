@@ -3,6 +3,7 @@
  */
 import { browser } from '$app/environment';
 import { logDebug, logError } from './secureLogger';
+import { sessionManager } from './sessionManager';
 
 // Determine if running in a development environment
 const isDev = browser && import.meta.env.DEV;
@@ -36,6 +37,9 @@ export const storeAdminToken = (token: string): void => {
       logAuth(`Storing token (length: ${token.length}) in localStorage`);
       localStorage.setItem('admin_session_token', token);
       logAuth('Token stored successfully');
+      
+      // Initialize session activity tracking
+      sessionManager.updateLastActivity();
       
       // Verify storage worked
       const storedToken = localStorage.getItem('admin_session_token');
@@ -94,6 +98,9 @@ export const clearAdminToken = (): void => {
       localStorage.removeItem('admin_session_token');
       logAuth('Token cleared from localStorage');
       
+      // Cleanup session manager
+      sessionManager.cleanup();
+      
       // Verify clearing worked
       const tokenAfterClearing = localStorage.getItem('admin_session_token');
       logAuth('Verification - Token after clearing:', Boolean(tokenAfterClearing));
@@ -118,8 +125,29 @@ export const isAdminLoggedIn = (): boolean => {
     return false;
   }
   
-  // In a real implementation, you might want to validate the token
-  // (e.g., check expiration by decoding JWT)
-  logAuth('Token found, admin is logged in');
+  // Check session expiration using session manager
+  if (sessionManager.isSessionExpired()) {
+    logAuth('Session has expired, admin is not logged in');
+    return false;
+  }
+  
+  logAuth('Token found and session is valid, admin is logged in');
   return true;
+};
+
+/**
+ * Updates the user's last activity timestamp
+ * Used to extend the session when user is active
+ */
+export const updateUserActivity = (): void => {
+  if (browser && getStoredAdminToken()) {
+    sessionManager.updateLastActivity();
+  }
+};
+
+/**
+ * Gets the current session status
+ */
+export const getSessionStatus = () => {
+  return sessionManager.getSessionStatus();
 };

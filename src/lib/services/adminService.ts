@@ -5,9 +5,10 @@ import type {
   UserActivityStats,
   WebhookDashboardResponse
 } from "$lib/types/conversations";
-import { getStoredAdminToken } from "$lib/utils/auth";
+import { getStoredAdminToken, updateUserActivity } from "$lib/utils/auth";
 import { logDebug, logError, logInfo } from "$lib/utils/secureLogger";
 import { browser } from "$app/environment";
+import { sessionManager } from "$lib/utils/sessionManager";
 
 // Environment variables
 let N8N_ADMIN_DASHBOARD_WEBHOOK_URL = "";
@@ -98,6 +99,10 @@ export async function authenticateAdmin(
   logInfo("Attempting admin authentication");
   try {
     logInfo("Sending authentication request to /api/admin/auth");
+    
+    // Track activity for authentication attempt
+    updateUserActivity();
+    
     const response = await axios.post("/api/admin/auth", {
       username,
       password,
@@ -121,7 +126,7 @@ export async function authenticateAdmin(
       logDebug("Auth error response status:", error.response.status);
       logDebug("Auth error response data:", error.response.data);
     }
-    throw error;
+    return null;
   }
 }
 
@@ -146,6 +151,16 @@ export async function fetchAnalyticsChatbotConversations(
       logError("No authentication token found - cannot proceed with API call");
       throw new Error("Authentication required. Please login as admin.");
     }
+
+    // Check if session is expired
+    if (sessionManager.isSessionExpired()) {
+      logError("Session has expired - cannot proceed with API call");
+      sessionManager.logout();
+      throw new Error("Session expired. Please login again.");
+    }
+
+    // Update activity for API usage
+    updateUserActivity();
 
     // Use direct string URL to avoid any issues with environment variables
     // This matches exactly what's in the .env file
@@ -278,6 +293,16 @@ export async function fetchHealthTrackerConversations(
       logError("No authentication token found - cannot proceed with API call");
       throw new Error("Authentication required. Please login as admin.");
     }
+
+    // Check if session is expired
+    if (sessionManager.isSessionExpired()) {
+      logError("Session has expired - cannot proceed with API call");
+      sessionManager.logout();
+      throw new Error("Session expired. Please login again.");
+    }
+
+    // Update activity for API usage
+    updateUserActivity();
 
     // Use direct string URL to avoid any issues with environment variables
     const directUrl = "https://teleme-n8n.teleme.co/webhook/ai-admin";

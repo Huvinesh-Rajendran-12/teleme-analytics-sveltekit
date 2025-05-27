@@ -1,11 +1,13 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { getStoredAdminToken, clearAdminToken } from '$lib/utils/auth';
-  import { logDebug } from '$lib/utils/secureLogger';
+  import { logDebug, logInfo } from '$lib/utils/secureLogger';
   import { fade, fly } from 'svelte/transition';
+  import { sessionManager, type SessionWarningCallback } from '$lib/utils/sessionManager';
   import SafeHtml from '../common/SafeHtml.svelte';
+  import SessionWarningModal from './SessionWarningModal.svelte';
 
   // Props
   export let isLoginPage = false;
@@ -13,6 +15,9 @@
   // State
   let isLoading = true;
   let sidebarOpen = false;
+  let showSessionWarning = false;
+  let sessionTimeRemaining = 0;
+  let warningUpdateInterval: NodeJS.Timeout | null = null;
   let navItems = [
     {
       name: 'Analytics Chatbot',
@@ -39,8 +44,61 @@
 
   // Handle logout
   function handleLogout() {
-    clearAdminToken();
-    goto('/admin/login');
+    logInfo('Admin logout requested');
+    sessionManager.logout();
+  }
+
+  // Session warning callback
+  const sessionCallback: SessionWarningCallback = {
+    onWarning: (timeLeft: number) => {
+      logInfo('Session timeout warning triggered');
+      sessionTimeRemaining = timeLeft;
+      showSessionWarning = true;
+
+      // Update the remaining time every second while warning is shown
+      if (warningUpdateInterval) {
+        clearInterval(warningUpdateInterval);
+      }
+
+      warningUpdateInterval = setInterval(() => {
+        const status = sessionManager.getSessionStatus();
+        sessionTimeRemaining = status.timeRemaining;
+
+        if (status.isExpired || sessionTimeRemaining <= 0) {
+          clearInterval(warningUpdateInterval!);
+          warningUpdateInterval = null;
+          showSessionWarning = false;
+          sessionManager.logout();
+        }
+      }, 1000);
+    },
+
+    onTimeout: () => {
+      logInfo('Session timeout occurred');
+      showSessionWarning = false;
+      if (warningUpdateInterval) {
+        clearInterval(warningUpdateInterval);
+        warningUpdateInterval = null;
+      }
+    }
+  };
+
+  // Handle session extension
+  function handleExtendSession() {
+    logInfo('User extended session');
+    sessionManager.extendSession();
+    showSessionWarning = false;
+
+    if (warningUpdateInterval) {
+      clearInterval(warningUpdateInterval);
+      warningUpdateInterval = null;
+    }
+  }
+
+  // Handle manual logout from warning modal
+  function handleSessionLogout() {
+    logInfo('User chose to logout from session warning');
+    sessionManager.logout();
   }
 
   // Toggle sidebar for mobile
@@ -74,10 +132,26 @@
       return;
     }
 
+    // Initialize session management
+    sessionManager.init(sessionCallback);
+    logDebug('Session management initialized');
+
     // Set loading to false with slight delay for smoother transitions
     setTimeout(() => {
       isLoading = false;
     }, 300);
+  });
+
+  onDestroy(() => {
+    // Clean up session management and intervals
+    if (warningUpdateInterval) {
+      clearInterval(warningUpdateInterval);
+      warningUpdateInterval = null;
+    }
+
+    if (!isLoginPage) {
+      sessionManager.cleanup();
+    }
   });
 </script>
 
@@ -290,4 +364,12 @@
       </main>
     </div>
   </div>
+
+  <!-- Session Warning Modal -->
+  <SessionWarningModal
+    bind:show={showSessionWarning}
+    timeRemaining={sessionTimeRemaining}
+    on:extend={handleExtendSession}
+    on:logout={handleSessionLogout}
+  />
 {/if}

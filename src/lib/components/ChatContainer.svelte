@@ -725,8 +725,31 @@
       isProcessing = false;
     }
 
-    // Note: Don't reset the user-initiated abort flag here  
+    // Note: Don't reset the user-initiated abort flag here
     // Let the timeout in stopProcessing() handle it
+  }
+
+  // Function to handle incoming window messages
+  function handleWindowMessage(event: MessageEvent) {
+    // In a real application, you would check event.origin here for security
+    console.debug('Received message from parent window:', event.data);
+
+    if (event.data && event.data.type === 'CLOSE_CHATBOT') {
+      console.debug('CLOSE_CHATBOT message received. Resetting chat state.');
+      chatState = {
+        messages: [],
+        loading: false,
+        stage: 'welcome'
+      };
+      // Optionally, you might want to stop any ongoing processing here
+      if (isProcessing) {
+        stopProcessing();
+      }
+      // Optionally, clean up activity tracker if needed
+      if (activityTracker) {
+        activityTracker.cleanup();
+      }
+    }
   }
 
   // afterUpdate hook removed as scrolling is now handled via tick() in handleSendQuestion
@@ -771,6 +794,10 @@
       chatState.stage = 'welcome';
     }
 
+    // Add event listener for messages from the parent window
+    window.addEventListener('message', handleWindowMessage);
+
+
     return () => {
       if (activityTracker) {
         activityTracker.cleanup();
@@ -780,6 +807,8 @@
         // Check if handleScroll was assigned
         chatContainer.removeEventListener('scroll', handleScroll);
       }
+      // Remove event listener for messages from the parent window
+      window.removeEventListener('message', handleWindowMessage);
     };
   });
 
@@ -793,6 +822,8 @@
       clearTimeout(abortCheckTimeoutId);
       abortCheckTimeoutId = null;
     }
+     // The window message listener is cleaned up in the onMount cleanup function now,
+     // so we don't need to remove it here again.
   });
 </script>
 

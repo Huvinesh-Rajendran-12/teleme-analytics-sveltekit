@@ -529,8 +529,14 @@
                 </svg>
               </div>
               <div>
-                <p class="text-sm text-gray-800">System health check completed successfully</p>
-                <p class="text-xs text-gray-500 mt-1">1 hour ago</p>
+                <p class="text-sm text-gray-800">
+                  System status: <span class="font-medium"
+                    >{dashboardData.data.health.overall_status}</span
+                  >
+                </p>
+                <p class="text-xs text-gray-500 mt-1">
+                  As of {lastUpdated}
+                </p>
               </div>
             </div>
             <div class="p-4 flex items-start">
@@ -552,9 +558,10 @@
               </div>
               <div>
                 <p class="text-sm text-gray-800">
-                  <span class="font-medium">Performance monitoring</span> detected optimal response times
+                  <span class="font-medium">System update:</span> Recorded {dashboardData.data
+                    .health.total_sessions} total sessions
                 </p>
-                <p class="text-xs text-gray-500 mt-1">2 hours ago</p>
+                <p class="text-xs text-gray-500 mt-1">Recently</p>
               </div>
             </div>
           </div>

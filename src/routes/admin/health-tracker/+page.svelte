@@ -560,23 +560,9 @@
           </select>
         </div>
 
-        <div>
-          <label for="status" class="block text-xs font-medium text-gray-700 mb-1">Status</label>
-          <select
-            id="status"
-            class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-          >
-            <option value="all">All Statuses</option>
-            <option value="active">Active</option>
-            <option value="completed">Completed</option>
-            <option value="pending">Pending</option>
-          </select>
-        </div>
+       </div>
       </div>
-    </div>
-
-    <!-- Error message -->
-    {#if error}
+      {#if error}
       <div
         class="mb-6 rounded-md bg-red-50 p-4 text-sm text-red-700 shadow-sm"
         in:fly={{ y: -10, duration: 200 }}

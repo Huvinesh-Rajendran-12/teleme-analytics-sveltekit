@@ -14,25 +14,43 @@
   export let min: number = 1;
   export let max: number = 60;
 
+  // Internal warning state
+  let warning: string | null = null;
+  let warningTimeout: ReturnType<typeof setTimeout> | null = null;
+
   // Handle value changes
   function handleInput(e: Event) {
     const target = e.currentTarget as HTMLInputElement;
+    const originalValue = target.value;
     
     // Replace any non-digit characters
-    target.value = target.value.replace(/\D/g, '');
+    const cleanValue = originalValue.replace(/\D/g, '');
     
-    // Enforce min-max range
-    const numValue = parseInt(target.value);
-    if (!isNaN(numValue)) {
-      if (numValue > max) target.value = max.toString();
-      if (numValue < min && target.value !== '') target.value = min.toString();
+    // Check for invalid characters
+    if (originalValue !== cleanValue && originalValue !== '') {
+      showWarning('Only numbers are allowed');
     }
     
-    // Update the bound value BEFORE modifying the input
-    value = target.value;
+    target.value = cleanValue;
+    
+    // Enforce min-max range and show warnings
+    const numValue = parseInt(target.value);
+    if (!isNaN(numValue)) {
+      if (numValue > max) {
+        target.value = max.toString();
+        showWarning(`Maximum value is ${max}`);
+      } else if (numValue < min && target.value !== '') {
+        target.value = min.toString();
+        showWarning(`Minimum value is ${min}`);
+      } else {
+        clearWarning();
+      }
+    } else if (target.value === '') {
+      clearWarning();
+    }
     
     // Update the bound value and dispatch change event
-    target.value = value;
+    value = target.value;
     dispatch('change', value);
   }
   
@@ -42,12 +60,38 @@
     const charCode = e.which ? e.which : e.keyCode;
     if (charCode > 31 && (charCode < 48 || charCode > 57)) {
       e.preventDefault();
+      showWarning('Only numbers are allowed');
     }
     
     // Submit on Enter key
     if (charCode === 13) {
       dispatch('submit');
     }
+  }
+
+  // Show warning message
+  function showWarning(message: string) {
+    warning = message;
+    
+    // Clear any existing timeout
+    if (warningTimeout) {
+      clearTimeout(warningTimeout);
+    }
+    
+    // Auto-hide warning after 3 seconds
+    warningTimeout = setTimeout(() => {
+      warning = null;
+      warningTimeout = null;
+    }, 3000);
+  }
+
+  // Clear warning message
+  function clearWarning() {
+    if (warningTimeout) {
+      clearTimeout(warningTimeout);
+      warningTimeout = null;
+    }
+    warning = null;
   }
 </script>
 
@@ -72,6 +116,12 @@
 {#if error}
   <div class="text-red-500 text-sm mt-2 text-center">
     {error}
+  </div>
+{/if}
+
+{#if warning}
+  <div class="text-amber-600 text-sm mt-2 text-center animate-pulse">
+    ⚠️ {warning}
   </div>
 {/if}
 

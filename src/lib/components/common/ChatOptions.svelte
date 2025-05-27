@@ -11,6 +11,7 @@
     startNew: void;
     submit: string;
     stop: void;
+    change: string;
   }>();
   
   // Props
@@ -47,6 +48,7 @@
   // Handle duration change
   function handleDurationChange(event: CustomEvent<string>) {
     durationInput = event.detail;
+    dispatch('change', durationInput);
   }
   
   // Handle stop button click

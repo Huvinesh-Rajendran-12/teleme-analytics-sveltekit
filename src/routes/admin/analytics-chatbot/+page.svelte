@@ -23,23 +23,32 @@
   let showLoadingSkeleton = true;
 
   // Placeholder metrics - these would come from API in a real implementation
-  const metrics = {
-    activeUsers: 127,
-    totalConversations: 843,
-    avgResponseTime: '1.4s',
-    completionRate: '96.5%',
-    topCategories: [
-      { name: 'User Queries', count: 342, percentage: 41 },
-      { name: 'Support Requests', count: 227, percentage: 27 },
-      { name: 'General Info', count: 165, percentage: 19 },
-      { name: 'Other', count: 109, percentage: 13 }
-    ]
-  };
 
   // Filter state
   let searchQuery = '';
   let selectedDateRange = 'all';
-  let selectedStatus = 'all';
+
+  // Search functionality
+  let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  function handleSearchInput() {
+    // Clear existing timeout
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+
+    // Set new timeout to debounce search
+    searchTimeout = setTimeout(() => {
+      currentPage = 1; // Reset to first page when searching
+      loadConversations();
+    }, 500);
+  }
+
+  function clearSearch() {
+    searchQuery = '';
+    currentPage = 1;
+    loadConversations();
+  }
 
   // Derived state
   $: hasConversations = conversations && conversations.length > 0;
@@ -95,7 +104,11 @@
       // The timeout promise only rejects, so if it wins, Promise.race rejects.
       // If fetchAnalyticsChatbotConversations resolves first, Promise.race resolves with its value.
       const result = await Promise.race([
-        fetchAnalyticsChatbotConversations(currentPage, 10) as Promise<PossibleFetchResult>, // Explicitly cast the service promise return type to remove 'any'
+        fetchAnalyticsChatbotConversations(
+          currentPage,
+          10,
+          searchQuery
+        ) as Promise<PossibleFetchResult>, // Explicitly cast the service promise return type to remove 'any'
         new Promise<never>(
           (
             _,
@@ -469,117 +482,7 @@
       <div
         class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
         in:fly={{ y: 20, duration: 400, delay: 200 }}
-      >
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-          <div class="h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
-          <div class="p-4">
-            <div class="flex items-center">
-              <div
-                class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  class="h-4 w-4"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"
-                  />
-                </svg>
-              </div>
-              <div class="ml-3">
-                <p class="text-xs text-gray-500 font-medium">Active Sessions</p>
-                <p class="text-xl font-bold text-gray-900">{metrics.activeUsers}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-          <div class="h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
-          <div class="p-4">
-            <div class="flex items-center">
-              <div
-                class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  class="h-4 w-4"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fill-rule="evenodd"
-                    d="M18 5v8a2 2 0 01-2 2h-5l-5 4v-4H4a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2zM7 8H5v2h2V8zm2 0h2v2H9V8zm6 0h-2v2h2V8z"
-                    clip-rule="evenodd"
-                  />
-                </svg>
-              </div>
-              <div class="ml-3">
-                <p class="text-xs text-gray-500 font-medium">Total Conversations</p>
-                <p class="text-xl font-bold text-gray-900">{metrics.totalConversations}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-          <div class="h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
-          <div class="p-4">
-            <div class="flex items-center">
-              <div
-                class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  class="h-4 w-4"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fill-rule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
-                    clip-rule="evenodd"
-                  />
-                </svg>
-              </div>
-              <div class="ml-3">
-                <p class="text-xs text-gray-500 font-medium">Avg Response Time</p>
-                <p class="text-xl font-bold text-gray-900">{metrics.avgResponseTime}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-          <div class="h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
-          <div class="p-4">
-            <div class="flex items-center">
-              <div
-                class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  class="h-4 w-4"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fill-rule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    clip-rule="evenodd"
-                  />
-                </svg>
-              </div>
-              <div class="ml-3">
-                <p class="text-xs text-gray-500 font-medium">Completion Rate</p>
-                <p class="text-xl font-bold text-gray-900">{metrics.completionRate}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      ></div>
 
       <!-- Filters and Search -->
       <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
@@ -608,9 +511,32 @@
                 name="search"
                 id="search"
                 bind:value={searchQuery}
-                class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 pr-3 py-2 sm:text-sm border-gray-300 rounded-md"
+                on:input={handleSearchInput}
+                class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 pr-10 py-2 sm:text-sm border-gray-300 rounded-md"
                 placeholder="Search by user or content"
               />
+              {#if searchQuery}
+                <button
+                  type="button"
+                  on:click={clearSearch}
+                  aria-label="Clear search"
+                  class="absolute inset-y-0 right-0 pr-3 flex items-center"
+                >
+                  <svg
+                    class="h-4 w-4 text-gray-400 hover:text-gray-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              {/if}
             </div>
           </div>
 
@@ -628,20 +554,6 @@
               <option value="week">This Week</option>
               <option value="month">This Month</option>
               <option value="custom">Custom Range</option>
-            </select>
-          </div>
-
-          <div>
-            <label for="status" class="block text-xs font-medium text-gray-700 mb-1">Status</label>
-            <select
-              id="status"
-              bind:value={selectedStatus}
-              class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-            >
-              <option value="all">All Status</option>
-              <option value="completed">Completed</option>
-              <option value="active">Active</option>
-              <option value="abandoned">Abandoned</option>
             </select>
           </div>
         </div>

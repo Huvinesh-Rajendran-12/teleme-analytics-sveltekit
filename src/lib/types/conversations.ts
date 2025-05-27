@@ -85,3 +85,62 @@ export interface AdminDashboardStats {
   analytics: UserActivityStats | null;
   healthTracker: UserActivityStats | null;
 }
+
+// Webhook dashboard data interfaces
+export interface WebhookDashboardTrends {
+  active_users: {
+    current: string;
+    last_month: string;
+    change_percent: string;
+  };
+  conversations: {
+    today: string;
+    yesterday: string;
+    change_percent: string;
+  };
+  response_time: {
+    current_avg: string;
+    last_week_avg: string | null;
+    change_seconds: string | null;
+    change_percent: string;
+  };
+}
+
+export interface WebhookDashboardHealth {
+  overall_status: string;
+  hours_since_last_conversation: string;
+  hours_since_last_session: string;
+  total_conversations: string;
+  total_sessions: string;
+  system_operational: boolean;
+  needs_attention: boolean;
+  critical_issue: boolean;
+}
+
+export interface WebhookDashboardSummary {
+  total_active_users: string;
+  conversations_today: string;
+  avg_response_time_seconds: string;
+  analytics: {
+    total_conversations: string;
+    active_today: string;
+    avg_duration_minutes: string;
+  };
+  health_tracker: {
+    total_conversations: string;
+    active_today: string;
+    avg_duration_minutes: string;
+  };
+}
+
+export interface WebhookDashboardData {
+  summary: WebhookDashboardSummary;
+  trends: WebhookDashboardTrends;
+  health: WebhookDashboardHealth;
+}
+
+export interface WebhookDashboardResponse {
+  status: string;
+  timestamp: string;
+  data: WebhookDashboardData;
+}

@@ -22,6 +22,31 @@
   let connectionIssue = false;
   let showLoadingSkeleton = true;
 
+  // Filter state
+  let searchQuery = '';
+
+  // Search functionality
+  let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+  
+  function handleSearchInput() {
+    // Clear existing timeout
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+    
+    // Set new timeout to debounce search
+    searchTimeout = setTimeout(() => {
+      currentPage = 1; // Reset to first page when searching
+      loadConversations();
+    }, 500);
+  }
+
+  function clearSearch() {
+    searchQuery = '';
+    currentPage = 1;
+    loadConversations();
+  }
+
   // Derived state
   $: hasConversations = conversations && conversations.length > 0;
 
@@ -67,7 +92,7 @@
       }
 
       const result = (await Promise.race([
-        fetchHealthTrackerConversations(currentPage, 10),
+        fetchHealthTrackerConversations(currentPage, 10, searchQuery),
         new Promise<null>((_, reject) =>
           setTimeout(() => reject(new Error('Request timeout')), 15000)
         )
@@ -284,10 +309,10 @@
             in:fly={{ y: -20, duration: 400 }}
           >
             <div
-              class="mr-3 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0 group-hover:bg-blue-200 transition-colors"
+              class="mr-3 h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 flex-shrink-0 group-hover:bg-green-200 transition-colors"
             >
               <!-- Health Tracker Icon Placeholder -->
-              <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" color="#16a34a">
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
@@ -308,7 +333,7 @@
           <button
             on:click={() => loadConversations()}
             disabled={loading}
-            class="inline-flex items-center justify-center rounded-md bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 ease-in-out"
+            class="inline-flex items-center justify-center rounded-md bg-green-50 px-4 py-2 text-sm font-medium text-green-700 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 ease-in-out"
           >
             {#if loading}
               <svg
@@ -327,7 +352,7 @@
                 ></circle>
                 <path
                   class="opacity-75"
-                  fill="currentColor"
+                  fill="#16a34a"
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                 ></path>
               </svg>
@@ -338,7 +363,7 @@
                 class="h-4 w-4 mr-1"
                 fill="none"
                 viewBox="0 0 24 24"
-                stroke="currentColor"
+                stroke="#16a34a"
               >
                 <path
                   stroke-linecap="round"
@@ -360,11 +385,11 @@
       in:fly={{ y: 20, duration: 400, delay: 200 }}
     >
       <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-        <div class="h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
+        <div class="h-1 bg-gradient-to-r from-green-400 to-green-600"></div>
         <div class="p-4">
           <div class="flex items-center">
             <div
-              class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0"
+              class="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 flex-shrink-0"
             >
               <!-- Icon placeholder: Document/File -->
               <svg
@@ -381,21 +406,21 @@
               </svg>
             </div>
             <div class="ml-3">
-              <p class="text-xs text-gray-500 font-medium">Total Sessions</p>
-              <p class="text-xl font-bold text-gray-900">{/* Placeholder value */ 'N/A'}</p>
+              <p class="text-xs text-green-500 font-medium">Total Sessions</p>
+              <p class="text-xl font-bold text-green-900">{/* Placeholder value */ 'N/A'}</p>
             </div>
           </div>
         </div>
       </div>
 
       <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-        <div class="h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
+        <div class="h-1 bg-gradient-to-r from-green-400 to-green-600"></div>
         <div class="p-4">
           <div class="flex items-center">
             <div
-              class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0"
+              class="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 flex-shrink-0"
             >
-              <!-- Icon placeholder: Clock -->
+              <!-- Icon placeholder: Checkmark -->
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 class="h-4 w-4"
@@ -410,15 +435,15 @@
               </svg>
             </div>
             <div class="ml-3">
-              <p class="text-xs text-gray-500 font-medium">Avg Session Duration</p>
-              <p class="text-xl font-bold text-gray-900">{/* Placeholder value */ 'N/A'}</p>
+              <p class="text-xs text-green-500 font-medium">Avg Session Duration</p>
+              <p class="text-xl font-bold text-green-900">{/* Placeholder value */ 'N/A'}</p>
             </div>
           </div>
         </div>
       </div>
 
       <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-        <div class="h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
+        <div class="h-1 bg-gradient-to-r from-green-400 to-green-600"></div>
         <div class="p-4">
           <div class="flex items-center">
             <div
@@ -439,19 +464,19 @@
               </svg>
             </div>
             <div class="ml-3">
-              <p class="text-xs text-gray-500 font-medium">Completed Plans</p>
-              <p class="text-xl font-bold text-gray-900">{/* Placeholder value */ 'N/A'}</p>
+              <p class="text-xs text-green-500 font-medium">Completed Plans</p>
+              <p class="text-xl font-bold text-green-900">{/* Placeholder value */ 'N/A'}</p>
             </div>
           </div>
         </div>
       </div>
 
       <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-        <div class="h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
+        <div class="h-1 bg-gradient-to-r from-green-400 to-green-600"></div>
         <div class="p-4">
           <div class="flex items-center">
             <div
-              class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0"
+              class="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 flex-shrink-0"
             >
               <!-- Icon placeholder: User group -->
               <svg
@@ -466,16 +491,78 @@
               </svg>
             </div>
             <div class="ml-3">
-              <p class="text-xs text-gray-500 font-medium">Active Sessions</p>
-              <p class="text-xl font-bold text-gray-900">{/* Placeholder value */ 'N/A'}</p>
+              <p class="text-xs text-green-500 font-medium">Active Sessions</p>
+              <p class="text-xl font-bold text-green-900">{/* Placeholder value */ 'N/A'}</p>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Error message -->
-    {#if error}
+    <!-- Search and Filters -->
+    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label for="search" class="block text-xs font-medium text-gray-700 mb-1"
+            >Search Conversations</label
+          >
+          <div class="relative rounded-md shadow-sm">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg
+                class="h-4 w-4 text-gray-400"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </div>
+            <input
+              type="text"
+              name="search"
+              id="search"
+              bind:value={searchQuery}
+              on:input={handleSearchInput}
+              class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 pr-10 py-2 sm:text-sm border-gray-300 rounded-md"
+              placeholder="Search by user or content"
+            />
+            {#if searchQuery}
+              <button
+                type="button"
+                on:click={clearSearch}
+                aria-label="Clear search"
+                class="absolute inset-y-0 right-0 pr-3 flex items-center"
+              >
+                <svg class="h-4 w-4 text-gray-400 hover:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            {/if}
+          </div>
+        </div>
+
+        <div>
+          <label for="date-range" class="block text-xs font-medium text-gray-700 mb-1"
+            >Date Range</label
+          >
+          <select
+            id="date-range"
+            class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+          >
+            <option value="all">All Time</option>
+            <option value="today">Today</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+          </select>
+        </div>
+
+       </div>
+      </div>
+      {#if error}
       <div
         class="mb-6 rounded-md bg-red-50 p-4 text-sm text-red-700 shadow-sm"
         in:fly={{ y: -10, duration: 200 }}
@@ -501,7 +588,7 @@
               <div class="mt-2">
                 <button
                   on:click={() => loadConversations()}
-                  class="inline-flex rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100"
+                  class="inline-flex rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-100"
                 >
                   Try Again
                 </button>
@@ -593,7 +680,7 @@
             class="border border-gray-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 bg-white transform hover:-translate-y-1"
             in:fade={{ duration: 300, delay: Math.min(i * 50, 300) }}
           >
-            <div class="h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
+            <div class="h-1 bg-gradient-to-r from-green-400 to-green-600"></div>
             <div class="flex flex-col md:flex-row md:justify-between md:items-center p-4">
               <div>
                 <h3 class="font-medium text-gray-900 flex items-center">
@@ -784,12 +871,12 @@
                 </span>
               {:else}
                 <button
-                  on:click={() => goToPage(page)}
-                  class="relative inline-flex items-center px-4 py-2 border border-gray-300 {page ===
-                  currentPage
-                    ? 'bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 border-blue-200 z-10 font-medium'
-                    : 'bg-white text-gray-500 hover:bg-gray-50'} text-sm"
-                >
+                 on:click={() => goToPage(page)}
+                 class="relative inline-flex items-center px-4 py-2 border border-gray-300 {page ===
+                 currentPage
+                   ? 'bg-gradient-to-r from-green-50 to-green-100 text-green-700 border-green-200 z-10 font-medium'
+                   : 'bg-white text-gray-500 hover:bg-gray-50'} text-sm"
+               >
                   {page}
                 </button>
               {/if}

@@ -27,6 +27,7 @@ export const defaultSecurityConfig: SecurityConfig = {
   iframe: {
     allowIframes: true,
     allowedDomains: [
+      'http://localhost:3000',
       'https://staging-botpress.teleme.co',
       'https://staging.teleme.co',
       'https://teleme.co'

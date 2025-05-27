@@ -309,10 +309,10 @@
             in:fly={{ y: -20, duration: 400 }}
           >
             <div
-              class="mr-3 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0 group-hover:bg-blue-200 transition-colors"
+              class="mr-3 h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 flex-shrink-0 group-hover:bg-green-200 transition-colors"
             >
               <!-- Health Tracker Icon Placeholder -->
-              <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" color="#16a34a">
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
@@ -333,7 +333,7 @@
           <button
             on:click={() => loadConversations()}
             disabled={loading}
-            class="inline-flex items-center justify-center rounded-md bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 ease-in-out"
+            class="inline-flex items-center justify-center rounded-md bg-green-50 px-4 py-2 text-sm font-medium text-green-700 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 ease-in-out"
           >
             {#if loading}
               <svg
@@ -352,7 +352,7 @@
                 ></circle>
                 <path
                   class="opacity-75"
-                  fill="currentColor"
+                  fill="#16a34a"
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                 ></path>
               </svg>
@@ -363,7 +363,7 @@
                 class="h-4 w-4 mr-1"
                 fill="none"
                 viewBox="0 0 24 24"
-                stroke="currentColor"
+                stroke="#16a34a"
               >
                 <path
                   stroke-linecap="round"
@@ -385,11 +385,11 @@
       in:fly={{ y: 20, duration: 400, delay: 200 }}
     >
       <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-        <div class="h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
+        <div class="h-1 bg-gradient-to-r from-green-400 to-green-600"></div>
         <div class="p-4">
           <div class="flex items-center">
             <div
-              class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0"
+              class="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 flex-shrink-0"
             >
               <!-- Icon placeholder: Document/File -->
               <svg
@@ -406,21 +406,21 @@
               </svg>
             </div>
             <div class="ml-3">
-              <p class="text-xs text-gray-500 font-medium">Total Sessions</p>
-              <p class="text-xl font-bold text-gray-900">{/* Placeholder value */ 'N/A'}</p>
+              <p class="text-xs text-green-500 font-medium">Total Sessions</p>
+              <p class="text-xl font-bold text-green-900">{/* Placeholder value */ 'N/A'}</p>
             </div>
           </div>
         </div>
       </div>
 
       <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-        <div class="h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
+        <div class="h-1 bg-gradient-to-r from-green-400 to-green-600"></div>
         <div class="p-4">
           <div class="flex items-center">
             <div
-              class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0"
+              class="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 flex-shrink-0"
             >
-              <!-- Icon placeholder: Clock -->
+              <!-- Icon placeholder: Checkmark -->
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 class="h-4 w-4"
@@ -435,15 +435,15 @@
               </svg>
             </div>
             <div class="ml-3">
-              <p class="text-xs text-gray-500 font-medium">Avg Session Duration</p>
-              <p class="text-xl font-bold text-gray-900">{/* Placeholder value */ 'N/A'}</p>
+              <p class="text-xs text-green-500 font-medium">Avg Session Duration</p>
+              <p class="text-xl font-bold text-green-900">{/* Placeholder value */ 'N/A'}</p>
             </div>
           </div>
         </div>
       </div>
 
       <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-        <div class="h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
+        <div class="h-1 bg-gradient-to-r from-green-400 to-green-600"></div>
         <div class="p-4">
           <div class="flex items-center">
             <div
@@ -464,19 +464,19 @@
               </svg>
             </div>
             <div class="ml-3">
-              <p class="text-xs text-gray-500 font-medium">Completed Plans</p>
-              <p class="text-xl font-bold text-gray-900">{/* Placeholder value */ 'N/A'}</p>
+              <p class="text-xs text-green-500 font-medium">Completed Plans</p>
+              <p class="text-xl font-bold text-green-900">{/* Placeholder value */ 'N/A'}</p>
             </div>
           </div>
         </div>
       </div>
 
       <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-        <div class="h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
+        <div class="h-1 bg-gradient-to-r from-green-400 to-green-600"></div>
         <div class="p-4">
           <div class="flex items-center">
             <div
-              class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0"
+              class="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 flex-shrink-0"
             >
               <!-- Icon placeholder: User group -->
               <svg
@@ -491,8 +491,8 @@
               </svg>
             </div>
             <div class="ml-3">
-              <p class="text-xs text-gray-500 font-medium">Active Sessions</p>
-              <p class="text-xl font-bold text-gray-900">{/* Placeholder value */ 'N/A'}</p>
+              <p class="text-xs text-green-500 font-medium">Active Sessions</p>
+              <p class="text-xl font-bold text-green-900">{/* Placeholder value */ 'N/A'}</p>
             </div>
           </div>
         </div>
@@ -602,7 +602,7 @@
               <div class="mt-2">
                 <button
                   on:click={() => loadConversations()}
-                  class="inline-flex rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100"
+                  class="inline-flex rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-100"
                 >
                   Try Again
                 </button>
@@ -694,7 +694,7 @@
             class="border border-gray-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 bg-white transform hover:-translate-y-1"
             in:fade={{ duration: 300, delay: Math.min(i * 50, 300) }}
           >
-            <div class="h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
+            <div class="h-1 bg-gradient-to-r from-green-400 to-green-600"></div>
             <div class="flex flex-col md:flex-row md:justify-between md:items-center p-4">
               <div>
                 <h3 class="font-medium text-gray-900 flex items-center">
@@ -885,12 +885,12 @@
                 </span>
               {:else}
                 <button
-                  on:click={() => goToPage(page)}
-                  class="relative inline-flex items-center px-4 py-2 border border-gray-300 {page ===
-                  currentPage
-                    ? 'bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 border-blue-200 z-10 font-medium'
-                    : 'bg-white text-gray-500 hover:bg-gray-50'} text-sm"
-                >
+                 on:click={() => goToPage(page)}
+                 class="relative inline-flex items-center px-4 py-2 border border-gray-300 {page ===
+                 currentPage
+                   ? 'bg-gradient-to-r from-green-50 to-green-100 text-green-700 border-green-200 z-10 font-medium'
+                   : 'bg-white text-gray-500 hover:bg-gray-50'} text-sm"
+               >
                   {page}
                 </button>
               {/if}

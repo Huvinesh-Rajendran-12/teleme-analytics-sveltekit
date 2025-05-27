@@ -2,7 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import { getStoredAdminToken, clearAdminToken } from '$lib/utils/auth';
+  import { getStoredAdminToken } from '$lib/utils/auth';
   import { logDebug, logInfo } from '$lib/utils/secureLogger';
   import { fade, fly } from 'svelte/transition';
   import { sessionManager, type SessionWarningCallback } from '$lib/utils/sessionManager';

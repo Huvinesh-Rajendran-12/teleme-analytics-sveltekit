@@ -7,8 +7,8 @@
   import { logDebug, logError } from '$lib/utils/secureLogger';
   import { fade, fly } from 'svelte/transition';
 
-  // Import the Icon component
-  import { Icon } from '$lib/icons';
+  // Import the StatCard component
+  import StatCard from './StatCard.svelte';
 
   // Component state and properties
   // State
@@ -562,7 +562,7 @@
                           in:fly={{ y: 20, duration: 500, delay: i * 50 }}
                         >
                           <div
-                            class="bg-gradient-to-t from-blue-500 to-blue-400 rounded-t w-full hover:opacity-80 transition-opacity cursor-pointer"
+                            class="h-0 bg-gradient-to-t from-blue-500 to-blue-400 rounded-t w-full hover:opacity-80 transition-[height,opacity] duration-300 ease-out cursor-pointer"
                             style="height: {(value / 50) * 100}%"
                           >
                             <div
@@ -595,7 +595,7 @@
                           in:fly={{ y: 20, duration: 500, delay: 100 + i * 50 }}
                         >
                           <div
-                            class="bg-gradient-to-t from-green-500 to-green-400 rounded-t w-full hover:opacity-80 transition-opacity cursor-pointer"
+                            class="h-0 bg-gradient-to-t from-green-500 to-green-400 rounded-t w-full hover:opacity-80 transition-[height,opacity] duration-300 ease-out cursor-pointer"
                             style="height: {(value / 200) * 100}%"
                           >
                             <div
@@ -711,178 +711,104 @@
             in:fly={{ y: 20, duration: 400, delay: 200 }}
           >
             <!-- Daily Active Users -->
-            <div
-              class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 transition-all duration-300 ease-in-out hover:shadow-md hover:border-blue-200"
-            >
-              <div class="flex items-center">
-                <div class="flex-shrink-0 bg-blue-100 rounded-md p-3">
-                  <Icon name="lightning" size={24} color="#2563eb" />
-                </div>
-                <div class="ml-5">
-                  <h3 class="text-gray-500 text-sm">Daily Active Users (DAU)</h3>
-                  <div class="mt-1 text-2xl font-semibold">
-                    {analyticsStats.dau}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title="Daily Active Users (DAU)"
+              value={analyticsStats.dau}
+              iconName="lightning"
+              iconColor="#2563eb"
+              bgColorClass="bg-blue-100"
+            />
 
             <!-- Weekly Active Users -->
-            <div
-              class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 transition-all duration-300 ease-in-out hover:shadow-md hover:border-blue-200"
-            >
-              <div class="flex items-center">
-                <div class="flex-shrink-0 bg-blue-100 rounded-md p-3">
-                  <Icon name="users" size={24} color="#2563eb" />
-                </div>
-                <div class="ml-5">
-                  <h3 class="text-gray-500 text-sm">Weekly Active Users (WAU)</h3>
-                  <div class="mt-1 text-2xl font-semibold">
-                    {analyticsStats.wau}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title="Weekly Active Users (WAU)"
+              value={analyticsStats.wau}
+              iconName="users"
+              iconColor="#2563eb"
+              bgColorClass="bg-blue-100"
+            />
 
             <!-- Monthly Active Users -->
-            <div
-              class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 transition-all duration-300 ease-in-out hover:shadow-md hover:border-blue-200"
-            >
-              <div class="flex items-center">
-                <div class="flex-shrink-0 bg-blue-100 rounded-md p-3">
-                  <Icon name="calendar" size={24} color="#2563eb" />
-                </div>
-                <div class="ml-5">
-                  <h3 class="text-gray-500 text-sm">Monthly Active Users (MAU)</h3>
-                  <div class="mt-1 text-2xl font-semibold">
-                    {analyticsStats.mau}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title="Monthly Active Users (MAU)"
+              value={analyticsStats.mau}
+              iconName="calendar"
+              iconColor="#2563eb"
+              bgColorClass="bg-blue-100"
+            />
 
             <!-- Total Users Ever -->
-            <div
-              class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 transition-all duration-300 ease-in-out hover:shadow-md hover:border-blue-200"
-            >
-              <div class="flex items-center">
-                <div class="flex-shrink-0 bg-blue-100 rounded-md p-3">
-                  <Icon name="user" size={24} color="#2563eb" />
-                </div>
-                <div class="ml-5">
-                  <h3 class="text-gray-500 text-sm">Total Users Ever</h3>
-                  <div class="mt-1 text-2xl font-semibold">
-                    {analyticsStats.totalUsersEver}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title="Total Users Ever"
+              value={analyticsStats.totalUsersEver}
+              iconName="user"
+              iconColor="#2563eb"
+              bgColorClass="bg-blue-100"
+            />
 
             <!-- Active Sessions -->
-            <div
-              class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 transition-all duration-300 ease-in-out hover:shadow-md hover:border-blue-200"
-            >
-              <div class="flex items-center">
-                <div class="flex-shrink-0 bg-blue-100 rounded-md p-3">
-                  <Icon name="session" size={24} color="#2563eb" />
-                </div>
-                <div class="ml-5">
-                  <h3 class="text-gray-500 text-sm">Active Sessions</h3>
-                  <div class="mt-1 text-2xl font-semibold">
-                    {analyticsStats.activeSessions}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title="Active Sessions"
+              value={analyticsStats.activeSessions}
+              iconName="session"
+              iconColor="#2563eb"
+              bgColorClass="bg-blue-100"
+            />
 
             <!-- Total Sessions -->
-            <div
-              class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 transition-all duration-300 ease-in-out hover:shadow-md hover:border-blue-200"
-            >
-              <div class="flex items-center">
-                <div class="flex-shrink-0 bg-blue-100 rounded-md p-3">
-                  <Icon name="document" size={24} color="#2563eb" />
-                </div>
-                <div class="ml-5">
-                  <h3 class="text-gray-500 text-sm">Total Sessions</h3>
-                  <div class="mt-1 text-2xl font-semibold">
-                    {analyticsStats.totalSessions}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title="Total Sessions"
+              value={analyticsStats.totalSessions}
+              iconName="document"
+              iconColor="#2563eb"
+              bgColorClass="bg-blue-100"
+            />
 
             <!-- Avg Sessions/User -->
-            <div
-              class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 transition-all duration-300 ease-in-out hover:shadow-md hover:border-blue-200"
-            >
-              <div class="flex items-center">
-                <div class="flex-shrink-0 bg-blue-100 rounded-md p-3">
-                  <Icon name="barChart" size={24} color="#2563eb" />
-                </div>
-                <div class="ml-5">
-                  <h3 class="text-gray-500 text-sm">Avg Sessions/User</h3>
-                  <div class="mt-1 text-2xl font-semibold">
-                    {analyticsStats.avgSessionsPerUser
-                      ? analyticsStats.avgSessionsPerUser.toFixed(2)
-                      : 'N/A'}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title="Avg Sessions/User"
+              value={
+                analyticsStats.avgSessionsPerUser
+                  ? analyticsStats.avgSessionsPerUser.toFixed(2)
+                  : 'N/A'
+              }
+              iconName="barChart"
+              iconColor="#2563eb"
+              bgColorClass="bg-blue-100"
+            />
 
             <!-- Weekly Retention -->
-            <div
-              class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 transition-all duration-300 ease-in-out hover:shadow-md hover:border-blue-200"
-            >
-              <div class="flex items-center">
-                <div class="flex-shrink-0 bg-blue-100 rounded-md p-3">
-                  <Icon name="retention" size={24} color="#2563eb" />
-                </div>
-                <div class="ml-5">
-                  <h3 class="text-gray-500 text-sm">Weekly Retention</h3>
-                  <div class="mt-1 text-2xl font-semibold">
-                    {analyticsStats.weeklyRetentionRate
-                      ? `${analyticsStats.weeklyRetentionRate.toFixed(2)}%`
-                      : 'N/A'}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title="Weekly Retention"
+              value={
+                analyticsStats.weeklyRetentionRate
+                  ? `${analyticsStats.weeklyRetentionRate.toFixed(2)}%`
+                  : 'N/A'
+              }
+              iconName="retention"
+              iconColor="#2563eb"
+              bgColorClass="bg-blue-100"
+            />
 
             <!-- Last Activity -->
-            <div
-              class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 transition-all duration-300 ease-in-out hover:shadow-md hover:border-blue-200"
-            >
-              <div class="flex items-center">
-                <div class="flex-shrink-0 bg-blue-100 rounded-md p-3">
-                  <Icon name="calendar" size={24} color="#2563eb" />
-                </div>
-                <div class="ml-5">
-                  <h3 class="text-gray-500 text-sm">Most Recent Activity</h3>
-                  <div class="mt-1 text-lg font-semibold">
-                    {formatUtcDateTime(analyticsStats.mostRecentActivity)}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title="Most Recent Activity"
+              value={formatUtcDateTime(analyticsStats.mostRecentActivity)}
+              iconName="calendar"
+              iconColor="#2563eb"
+              bgColorClass="bg-blue-100"
+              valueClass="mt-1 text-lg font-semibold"
+            />
 
             <!-- Time Since Last Activity -->
-            <div
-              class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 transition-all duration-300 ease-in-out hover:shadow-md hover:border-blue-200"
-            >
-              <div class="flex items-center">
-                <div class="flex-shrink-0 bg-blue-100 rounded-md p-3">
-                  <Icon name="clock" size={24} color="#2563eb" />
-                </div>
-                <div class="ml-5">
-                  <h3 class="text-gray-500 text-sm">Time Since Last Activity</h3>
-                  <div class="mt-1 text-xl font-semibold">
-                    {formatTimeSince(analyticsStats.timeSinceLastActivity)}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title="Time Since Last Activity"
+              value={formatTimeSince(analyticsStats.timeSinceLastActivity)}
+              iconName="clock"
+              iconColor="#2563eb"
+              bgColorClass="bg-blue-100"
+              valueClass="mt-1 text-xl font-semibold"
+            />
           </div>
         {:else}
           <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-center">
@@ -983,178 +909,114 @@
             in:fly={{ y: 20, duration: 400, delay: 200 }}
           >
             <!-- Daily Active Users -->
-            <div
-              class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 transition-all duration-300 ease-in-out hover:shadow-md hover:border-green-200"
-            >
-              <div class="flex items-center">
-                <div class="flex-shrink-0 bg-green-100 rounded-md p-3">
-                  <Icon name="lightning" size={24} color="#16a34a" />
-                </div>
-                <div class="ml-5">
-                  <h3 class="text-gray-500 text-sm">Daily Active Users (DAU)</h3>
-                  <div class="mt-1 text-2xl font-semibold">
-                    {healthTrackerStats.dau}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title="Daily Active Users (DAU)"
+              value={healthTrackerStats.dau}
+              iconName="lightning"
+              iconColor="#16a34a"
+              bgColorClass="bg-green-100"
+              hoverBorderColor="hover:border-green-200"
+            />
 
             <!-- Weekly Active Users -->
-            <div
-              class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 transition-all duration-300 ease-in-out hover:shadow-md hover:border-green-200"
-            >
-              <div class="flex items-center">
-                <div class="flex-shrink-0 bg-green-100 rounded-md p-3">
-                  <Icon name="users" size={24} color="#16a34a" />
-                </div>
-                <div class="ml-5">
-                  <h3 class="text-gray-500 text-sm">Weekly Active Users (WAU)</h3>
-                  <div class="mt-1 text-2xl font-semibold">
-                    {healthTrackerStats.wau}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title="Weekly Active Users (WAU)"
+              value={healthTrackerStats.wau}
+              iconName="users"
+              iconColor="#16a34a"
+              bgColorClass="bg-green-100"
+              hoverBorderColor="hover:border-green-200"
+            />
 
             <!-- Monthly Active Users -->
-            <div
-              class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 transition-all duration-300 ease-in-out hover:shadow-md hover:border-green-200"
-            >
-              <div class="flex items-center">
-                <div class="flex-shrink-0 bg-green-100 rounded-md p-3">
-                  <Icon name="calendar" size={24} color="#16a34a" />
-                </div>
-                <div class="ml-5">
-                  <h3 class="text-gray-500 text-sm">Monthly Active Users (MAU)</h3>
-                  <div class="mt-1 text-2xl font-semibold">
-                    {healthTrackerStats.mau}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title="Monthly Active Users (MAU)"
+              value={healthTrackerStats.mau}
+              iconName="calendar"
+              iconColor="#16a34a"
+              bgColorClass="bg-green-100"
+              hoverBorderColor="hover:border-green-200"
+            />
 
             <!-- Total Users Ever -->
-            <div
-              class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 transition-all duration-300 ease-in-out hover:shadow-md hover:border-green-200"
-            >
-              <div class="flex items-center">
-                <div class="flex-shrink-0 bg-green-100 rounded-md p-3">
-                  <Icon name="user" size={24} color="#16a34a" />
-                </div>
-                <div class="ml-5">
-                  <h3 class="text-gray-500 text-sm">Total Users Ever</h3>
-                  <div class="mt-1 text-2xl font-semibold">
-                    {healthTrackerStats.totalUsersEver}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title="Total Users Ever"
+              value={healthTrackerStats.totalUsersEver}
+              iconName="user"
+              iconColor="#16a34a"
+              bgColorClass="bg-green-100"
+              hoverBorderColor="hover:border-green-200"
+            />
 
             <!-- Active Sessions -->
-            <div
-              class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 transition-all duration-300 ease-in-out hover:shadow-md hover:border-green-200"
-            >
-              <div class="flex items-center">
-                <div class="flex-shrink-0 bg-green-100 rounded-md p-3">
-                  <Icon name="session" size={24} color="#16a34a" />
-                </div>
-                <div class="ml-5">
-                  <h3 class="text-gray-500 text-sm">Active Sessions</h3>
-                  <div class="mt-1 text-2xl font-semibold">
-                    {healthTrackerStats.activeSessions}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title="Active Sessions"
+              value={healthTrackerStats.activeSessions}
+              iconName="session"
+              iconColor="#16a34a"
+              bgColorClass="bg-green-100"
+              hoverBorderColor="hover:border-green-200"
+            />
 
             <!-- Total Sessions -->
-            <div
-              class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 transition-all duration-300 ease-in-out hover:shadow-md hover:border-green-200"
-            >
-              <div class="flex items-center">
-                <div class="flex-shrink-0 bg-green-100 rounded-md p-3">
-                  <Icon name="document" size={24} color="#16a34a" />
-                </div>
-                <div class="ml-5">
-                  <h3 class="text-gray-500 text-sm">Total Sessions</h3>
-                  <div class="mt-1 text-2xl font-semibold">
-                    {healthTrackerStats.totalSessions}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title="Total Sessions"
+              value={healthTrackerStats.totalSessions}
+              iconName="document"
+              iconColor="#16a34a"
+              bgColorClass="bg-green-100"
+              hoverBorderColor="hover:border-green-200"
+            />
 
             <!-- Avg Sessions/User -->
-            <div
-              class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 transition-all duration-300 ease-in-out hover:shadow-md hover:border-green-200"
-            >
-              <div class="flex items-center">
-                <div class="flex-shrink-0 bg-green-100 rounded-md p-3">
-                  <Icon name="barChart" size={24} color="#16a34a" />
-                </div>
-                <div class="ml-5">
-                  <h3 class="text-gray-500 text-sm">Avg Sessions/User</h3>
-                  <div class="mt-1 text-2xl font-semibold">
-                    {healthTrackerStats.avgSessionsPerUser
-                      ? healthTrackerStats.avgSessionsPerUser.toFixed(2)
-                      : 'N/A'}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title="Avg Sessions/User"
+              value={
+                healthTrackerStats.avgSessionsPerUser
+                  ? healthTrackerStats.avgSessionsPerUser.toFixed(2)
+                  : 'N/A'
+              }
+              iconName="barChart"
+              iconColor="#16a34a"
+              bgColorClass="bg-green-100"
+              hoverBorderColor="hover:border-green-200"
+            />
 
             <!-- Weekly Retention -->
-            <div
-              class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 transition-all duration-300 ease-in-out hover:shadow-md hover:border-green-200"
-            >
-              <div class="flex items-center">
-                <div class="flex-shrink-0 bg-green-100 rounded-md p-3">
-                  <Icon name="retention" size={24} color="#16a34a" />
-                </div>
-                <div class="ml-5">
-                  <h3 class="text-gray-500 text-sm">Weekly Retention</h3>
-                  <div class="mt-1 text-2xl font-semibold">
-                    {healthTrackerStats.weeklyRetentionRate
-                      ? `${healthTrackerStats.weeklyRetentionRate.toFixed(2)}%`
-                      : 'N/A'}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title="Weekly Retention"
+              value={
+                healthTrackerStats.weeklyRetentionRate
+                  ? `${healthTrackerStats.weeklyRetentionRate.toFixed(2)}%`
+                  : 'N/A'
+              }
+              iconName="retention"
+              iconColor="#16a34a"
+              bgColorClass="bg-green-100"
+              hoverBorderColor="hover:border-green-200"
+            />
 
             <!-- Last Activity -->
-            <div
-              class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 transition-all duration-300 ease-in-out hover:shadow-md hover:border-green-200"
-            >
-              <div class="flex items-center">
-                <div class="flex-shrink-0 bg-green-100 rounded-md p-3">
-                  <Icon name="calendar" size={24} color="#16a34a" />
-                </div>
-                <div class="ml-5">
-                  <h3 class="text-gray-500 text-sm">Most Recent Activity</h3>
-                  <div class="mt-1 text-lg font-semibold">
-                    {formatUtcDateTime(healthTrackerStats.mostRecentActivity)}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title="Most Recent Activity"
+              value={formatUtcDateTime(healthTrackerStats.mostRecentActivity)}
+              iconName="calendar"
+              iconColor="#16a34a"
+              bgColorClass="bg-green-100"
+              valueClass="mt-1 text-lg font-semibold"
+              hoverBorderColor="hover:border-green-200"
+            />
 
             <!-- Time Since Last Activity -->
-            <div
-              class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 transition-all duration-300 ease-in-out hover:shadow-md hover:border-green-200"
-            >
-              <div class="flex items-center">
-                <div class="flex-shrink-0 bg-green-100 rounded-md p-3">
-                  <Icon name="clock" size={24} color="#16a34a" />
-                </div>
-                <div class="ml-5">
-                  <h3 class="text-gray-500 text-sm">Time Since Last Activity</h3>
-                  <div class="mt-1 text-xl font-semibold">
-                    {formatTimeSince(healthTrackerStats.timeSinceLastActivity)}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <StatCard
+              title="Time Since Last Activity"
+              value={formatTimeSince(healthTrackerStats.timeSinceLastActivity)}
+              iconName="clock"
+              iconColor="#16a34a"
+              bgColorClass="bg-green-100"
+              valueClass="mt-1 text-xl font-semibold"
+              hoverBorderColor="hover:border-green-200"
+            />
           </div>
         {:else}
           <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-center">
@@ -1167,5 +1029,4 @@
         {/if}
       </div>
     {/if}
-  {/if}
-</div>
+  {/if}\n</div>

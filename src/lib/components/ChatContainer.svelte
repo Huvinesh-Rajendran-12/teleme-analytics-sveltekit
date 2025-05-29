@@ -732,23 +732,34 @@
   // Function to handle incoming window messages
   function handleWindowMessage(event: MessageEvent) {
     // In a real application, you would check event.origin here for security
-    console.debug('Received message from parent window:', event.data);
+    console.debug('[ANALYTICS] Received message from parent window:', event.data);
 
     if (event.data && event.data.type === 'CLOSE_CHATBOT') {
-      console.debug('CLOSE_CHATBOT message received. Resetting chat state.');
+      console.debug('[ANALYTICS] CLOSE_CHATBOT message received. Resetting chat state.');
+      
       chatState = {
         messages: [],
         loading: false,
         stage: 'welcome'
       };
+      
       // Optionally, you might want to stop any ongoing processing here
       if (isProcessing) {
+        console.debug('[ANALYTICS] Stopping processing due to CLOSE_CHATBOT');
         stopProcessing();
       }
-      // Optionally, clean up activity tracker if needed
+      
+      // Clean up and reinitialize activity tracker to ensure it keeps working
       if (activityTracker) {
+        console.debug('[ANALYTICS] Cleaning up activity tracker due to CLOSE_CHATBOT');
         activityTracker.cleanup();
       }
+      
+      // Reinitialize the activity tracker after cleanup
+      console.debug('[ANALYTICS] Reinitializing activity tracker after CLOSE_CHATBOT');
+      initActivityTracker();
+      
+      console.debug('[ANALYTICS] Chat reset complete, activity tracker reinitialized');
     }
   }
 

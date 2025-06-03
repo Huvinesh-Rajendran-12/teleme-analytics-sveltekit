@@ -32,13 +32,6 @@
       icon: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
             </svg>`
-    },
-    {
-      name: 'Statistics',
-      href: '/admin/dashboard',
-      icon: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
-            </svg>`
     }
   ];
 
@@ -154,16 +147,6 @@
     }
   });
 </script>
-
-<style>
-  :global(html, body) {
-    overscroll-behavior: none;
-  }
-  
-  :global(*) {
-    overscroll-behavior: none;
-  }
-</style>
 
 {#if isLoading}
   <div class="flex h-screen items-center justify-center bg-gray-50">
@@ -369,7 +352,11 @@
       </div>
 
       <!-- Main content -->
-      <main class="flex-1 px-4 py-8 sm:px-6 lg:px-8" class:pl-64={sidebarOpen && !isLoginPage} style="overscroll-behavior: none;">
+      <main
+        class="flex-1 px-4 py-8 sm:px-6 lg:px-8"
+        class:pl-64={sidebarOpen && !isLoginPage}
+        style="overscroll-behavior: none;"
+      >
         <slot />
       </main>
     </div>
@@ -383,3 +370,13 @@
     on:logout={handleSessionLogout}
   />
 {/if}
+
+<style>
+  :global(html, body) {
+    overscroll-behavior: none;
+  }
+
+  :global(*) {
+    overscroll-behavior: none;
+  }
+</style>

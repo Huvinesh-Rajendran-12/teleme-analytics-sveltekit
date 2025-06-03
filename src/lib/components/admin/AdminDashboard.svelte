@@ -17,24 +17,8 @@
   let analyticsStats: UserActivityStats | null = null;
   let healthTrackerStats: UserActivityStats | null = null;
   let activeTab = 'overview'; // 'overview', 'analytics', 'health'
-  // let dateRangeFilter = '7d'; // '24h', '7d', '30d', '90d', 'all'
 
   // Placeholder chart data
-  const chartData = {
-    dailyUsers: [20, 25, 30, 35, 25, 45, 40],
-    weeklyLabels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    retentionRate: [95, 92, 88, 83, 79, 75, 73],
-    messageVolume: [120, 140, 125, 160, 180, 165, 190],
-    errorRates: [3, 2, 4, 2, 1, 1, 2]
-  };
-
-  // const dateRanges = [
-  //   { id: '24h', label: 'Last 24 Hours' },
-  //   { id: '7d', label: 'Last 7 Days' },
-  //   { id: '30d', label: 'Last 30 Days' },
-  //   { id: '90d', label: 'Last 90 Days' },
-  //   { id: 'all', label: 'All Time' }
-  // ];
 
   // Format time since last activity
   function formatTimeSince(time: TimeSinceLastActivity | undefined): string {
@@ -115,11 +99,6 @@
     activeTab = tab;
   }
 
-  // function setDateRange(range: string) {
-  //   dateRangeFilter = range;
-  //   // In a real implementation, we would refetch stats for the selected range
-  // }
-
   onMount(() => {
     logDebug('AdminDashboard component mounted - fetching stats');
     fetchStats();
@@ -157,22 +136,6 @@
           engagement trends.
         </p>
       </div>
-
-      <!-- Date range selector -->
-      <!-- <div
-        class="flex space-x-1 rounded-lg shadow-sm bg-white border border-gray-200 overflow-hidden"
-      >
-        {#each dateRanges as range}
-          <button
-            class="px-3 py-2 text-sm font-medium {dateRangeFilter === range.id
-              ? 'bg-blue-600 text-white'
-              : 'bg-white text-gray-600 hover:bg-gray-50'} transition-colors"
-            on:click={() => setDateRange(range.id)}
-          >
-            {range.label}
-          </button>
-        {/each}
-      </div> -->
     </div>
 
     <!-- Tab navigation -->
@@ -418,13 +381,13 @@
         </div>
 
         <!-- Activity & Trends -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-          <!-- Recent Activity -->
-          <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div class="border-b border-gray-100 bg-gray-50 px-6 py-4">
+        <!-- <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8"> -->
+        <!-- Recent Activity -->
+        <!-- <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"> -->
+        <!-- <div class="border-b border-gray-100 bg-gray-50 px-6 py-4">
               <h2 class="text-lg font-semibold text-gray-800">Recent Activity</h2>
-            </div>
-            <div class="p-6">
+            </div> -->
+        <!-- <div class="p-6">
               <div class="space-y-4">
                 <div class="flex items-start">
                   <div
@@ -534,15 +497,15 @@
                   View all activity
                 </a>
               </div>
-            </div>
-          </div>
+            </div> -->
+        <!-- </div> -->
 
-          <!-- Weekly Trends -->
-          <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div class="border-b border-gray-100 bg-gray-50 px-6 py-4">
+        <!-- Weekly Trends -->
+        <!-- <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"> -->
+        <!-- <div class="border-b border-gray-100 bg-gray-50 px-6 py-4">
               <h2 class="text-lg font-semibold text-gray-800">Weekly Usage Trends</h2>
-            </div>
-            <div class="p-6">
+            </div> -->
+        <!-- <div class="p-6">
               <div class="relative pt-1">
                 <div class="mb-6">
                   <div class="flex items-center justify-between mb-2">
@@ -619,9 +582,9 @@
                   View detailed analytics
                 </a>
               </div>
-            </div>
-          </div>
-        </div>
+            </div> -->
+        <!-- </div> -->
+        <!-- </div> -->
       </div>
     {/if}
 

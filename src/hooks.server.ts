@@ -19,11 +19,12 @@ export const handle: Handle = async ({ event, resolve }) => {
     const referer = event.request.headers.get('referer') || '';
     const userAgent = event.request.headers.get('user-agent') || '';
 
-    // Skip iframe check for API routes, static assets, and specific paths
+    // Skip iframe check for API routes, static assets, admin routes, and specific paths
     const isApiOrAsset =
       event.url.pathname.startsWith('/api') ||
       event.url.pathname.startsWith('/_app') ||
       event.url.pathname.startsWith('/static') ||
+      event.url.pathname.startsWith('/admin') ||
       event.url.pathname.includes('.') ||
       event.url.pathname === '/iframe-required' ||
       event.url.pathname === '/debug-headers';
